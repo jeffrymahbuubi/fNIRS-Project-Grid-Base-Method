@@ -90,3 +90,5 @@ ruvector.db
 # ─── Resources ────────────────────────────────────────────────────────────
 references
 research/experiments
+.swarm/memory.db-wal
+.swarm/memory.db-shm
