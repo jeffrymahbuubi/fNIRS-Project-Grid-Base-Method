@@ -32,14 +32,14 @@ class FNIRSSequenceDatasetV2(Dataset):
         label_map = {'healthy': 0, 'anxiety': 1}
 
         for label_name, label in label_map.items():
-            label_path = os.path.join(self.root_dir, label_name)
+            label_path = os.path.join(self.root_dir, self.task_type, label_name)
             for subject in os.listdir(label_path):
-                subject_path = os.path.join(label_path, subject, self.task_type)
+                subject_path = os.path.join(label_path, subject)
                 self.class_subject_count[label_name].add(subject)
                 # Initialize subject trial count
                 self.subject_trial_count[subject] = 0
                 for dt in self.required_types:
-                    data_dir = os.path.join(subject_path, dt.upper())
+                    data_dir = os.path.join(subject_path, dt.lower())
                     if os.path.exists(data_dir):
                         self.append_trials(data_dir, label, subject)
 
