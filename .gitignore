@@ -81,5 +81,10 @@ logs/
 # ─── Data ────────────────────────────────────────────────────────────
 data
 
+# ─── AgentDB / RuFlo runtime databases ───────────────────────────────
+agentdb.rvf
+agentdb.rvf.lock
+ruvector.db
+
 # ─── Resources ────────────────────────────────────────────────────────────
 references
