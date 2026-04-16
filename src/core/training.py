@@ -10,12 +10,11 @@ import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.lr_scheduler import LRScheduler
 from sklearn.metrics import confusion_matrix
 
-from src.datasets import get_data
-from src.config import TrainingConfiguration, SystemConfig
-from src.config import setup_system
+from .datasets import get_data
+from .config import TrainingConfiguration, SystemConfig, setup_system
 
 
 #############################################################
@@ -573,7 +572,7 @@ class LabelSmoothing(nn.Module):
             true_dist.scatter_(1, target.data.unsqueeze(1), 1.0 - self.smoothing)
             return torch.mean(torch.sum(-true_dist * log_probs, dim=-1))
 
-class CosineWarmupScheduler(_LRScheduler):
+class CosineWarmupScheduler(LRScheduler):
     def __init__(self, optimizer, warmup, max_iters):
         self.warmup = warmup
         self.max_num_iters = max_iters

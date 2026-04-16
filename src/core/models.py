@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-from torchinfo import summary
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 

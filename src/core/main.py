@@ -3,10 +3,10 @@ import torch
 from torch import nn, optim
 from torchvision.transforms.v2 import Compose, UniformTemporalSubsample, Resize
 
-from src.config import TrainingConfiguration, SystemConfig, setup_system
-from src.models import ViT
-from src.training import main as training_main, CosineWarmupScheduler, LabelSmoothing
-from src.datasets import RearrangeToTCHW, RearrangeBackToCTHW, ConvertToRGB, AddGaussianNoise
+from .config import TrainingConfiguration, SystemConfig, setup_system
+from .models import ViT
+from .training import main as training_main, CosineWarmupScheduler, LabelSmoothing
+from .datasets import RearrangeToTCHW, RearrangeBackToCTHW, ConvertToRGB, AddGaussianNoise
 
 
 def parse_args():
