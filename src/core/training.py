@@ -215,7 +215,7 @@ def _empty_fold_metrics():
 def perform_holdout_training(data_dir, data_type, test_size, task_types, batch_size, model,
                              optimizer_class, optimizer_params, scheduler_class, scheduler_params,
                              save_dir, model_name, training_configuration, loss_fn, max_trials,
-                             train_transform, val_transform, patience=10):
+                             train_transform, val_transform, patience=25):
     train_loader, val_loader = get_data(
         root_dir=data_dir, data_type=data_type, task_types=task_types,
         batch_size=batch_size, test_size=test_size, use_stratified_kfold=False,
@@ -285,7 +285,7 @@ def perform_holdout_training(data_dir, data_type, test_size, task_types, batch_s
 def perform_kfold_training(data_dir, data_type, test_size, task_types, batch_size, k_folds, model,
                            optimizer_class, optimizer_params, scheduler_class, scheduler_params,
                            save_dir, model_name, training_configuration, loss_fn,
-                           max_trials, train_transform, val_transform, patience=10):
+                           max_trials, train_transform, val_transform, patience=25):
     fold_data = get_data(
         root_dir=data_dir, data_type=data_type, task_types=task_types,
         batch_size=batch_size, test_size=test_size, k_folds=k_folds,
@@ -322,7 +322,7 @@ def perform_kfold_training(data_dir, data_type, test_size, task_types, batch_siz
 def perform_loso_training(data_dir, data_type, task_types, batch_size, model,
                           optimizer_class, optimizer_params, scheduler_class, scheduler_params,
                           save_dir, model_name, training_configuration, loss_fn,
-                          max_trials=None, train_transform=None, val_transform=None, patience=10):
+                          max_trials=None, train_transform=None, val_transform=None, patience=25):
     fold_data = get_data(
         root_dir=data_dir, data_type=data_type, task_types=task_types,
         batch_size=batch_size, use_loso_cv=True, max_trials=max_trials,
@@ -386,7 +386,7 @@ def main(data_dir: str, save_dir: str, test_size: float, data_type: str,
     max_trials = kwargs.get('max_trials', None)
     train_transform = kwargs.get('train_transform', None)
     val_transform = kwargs.get('val_transform', None)
-    patience = kwargs.get('patience', 10)
+    patience = kwargs.get('patience', 25)
 
     model.to(training_configuration.device)
     setup_system(SystemConfig)
