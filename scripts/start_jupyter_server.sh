@@ -5,7 +5,7 @@
 # Resolve project root (one level up from this script's directory)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-VENV_DIR="$PROJECT_ROOT/../.venv"
+VENV_DIR="$PROJECT_ROOT/src/.venv"
 
 cd "$PROJECT_ROOT"
 source "$VENV_DIR/bin/activate"
