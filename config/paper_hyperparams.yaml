@@ -1,0 +1,47 @@
+# Hyperparameters from: fNIRS Neuroimaging-Based Anxiety Detection (Jeffry, NCKU, 2025)
+
+model:
+  architecture: ViViT
+  num_encoder_blocks: 6
+  attention_heads: 8
+  embedding_dim: 64
+  mlp_hidden_dim: 512
+  tubelet_patch: [16, 8, 8]  # (p_t, p_h, p_w)
+  num_tokens: 4096
+  num_classes: 2  # HC vs GAD
+
+input:
+  temporal_frames: 256
+  spatial_height: 128
+  spatial_width: 128
+  fnirs_channels: 23
+  grid_shape: [5, 7]
+  hemoglobin_type: HbT  # best performing
+
+training:
+  optimizer: Adam
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  learning_rate: 1.0e-3
+  batch_size: 8
+  total_epochs: 100
+  warmup_epochs: 10
+  lr_schedule: cosine_warmup
+  noise_augmentation:
+    mean: 0.0
+    std: 0.05
+
+dataset:
+  total_subjects: 53
+  healthy_controls: 33  # total recruited; GNG sub-cohort = 31
+  gad_patients: 20
+  fnirs_wavelengths_nm: [760, 850]
+  tasks: [Go_No_Go, Serial_Subtraction, 1back_WM, Verbal_Fluency]
+  best_task: Go_No_Go
+
+results:
+  best_cv: LOSO
+  accuracy: 0.9755
+  sensitivity: 1.0
+  specificity: 0.9597
+  f1_score: 0.9697
