@@ -132,6 +132,9 @@ This will display a plot showing the average HbO, HbR, and HbT signals across al
 - `--grid-size H,W`: Grid dimensions (default: `5,7`). Only used with `--use-grid-mapping`.
 - `--no-interpolation`: Disable Gaussian RBF interpolation for empty grid cells (only with `--use-grid-mapping`).
 
+### Plot Output
+- `--save-plots`: Save `{task}_time_marker.png` and `{task}_evoked.png` per subject to `output-dir/{task}/{group}/{subject}/`.
+
 ### Logging
 - `--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}`: Set logging verbosity (default: INFO)
 
@@ -213,6 +216,88 @@ python data/processor_cli.py \
 ```
 
 > **Note**: Without `--use-grid-mapping`, epochs are saved as raw `(23, T)` arrays. With it, they are saved as `(T, H, W)` grid tensors. The ViT training pipeline (`src/core/main.py`) requires grid-mapped data.
+
+### Example 8: Complete Batch Processing — All Tasks × All Data Types
+
+Copy-paste any command below. All use `--apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping` as a standard preprocessing pipeline.
+
+#### GNG
+
+```bash
+# GNG — HbO
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task GNG --data-type hbo \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+
+# GNG — HbR
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task GNG --data-type hbr \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+
+# GNG — HbT
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task GNG --data-type hbt \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+```
+
+#### 1backWM
+
+```bash
+# 1backWM — HbO
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task 1backWM --data-type hbo \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+
+# 1backWM — HbR
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task 1backWM --data-type hbr \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+
+# 1backWM — HbT
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task 1backWM --data-type hbt \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+```
+
+#### VF
+
+```bash
+# VF — HbO
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task VF --data-type hbo \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+
+# VF — HbR
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task VF --data-type hbr \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+
+# VF — HbT
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task VF --data-type hbt \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+```
+
+#### SS
+
+```bash
+# SS — HbO
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task SS --data-type hbo \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+
+# SS — HbR
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task SS --data-type hbr \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+
+# SS — HbT
+python processor_cli.py --mode batch --root-dir raw/ --output-dir ./processed \
+  --subjects-json ./subjects.json --task SS --data-type hbt \
+  --apply-baseline --apply-zscore --save-preprocessed --use-grid-mapping
+```
+
+> **Tip**: Append `--save-plots` to any command above to also generate `*_time_marker.png` and `*_evoked.png` per subject alongside the processed epochs.
 
 ## Directory Structure
 
