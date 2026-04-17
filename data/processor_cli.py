@@ -55,6 +55,8 @@ class FNIRSDataProcessor:
         use_grid_mapping=False,
         grid_size=(5, 7),
         use_interpolation=True,
+        save_plots=False,
+        plot_dir=None,
     ):
         self.root_dir = Path(root_dir)
         self.subject = subject
@@ -70,6 +72,8 @@ class FNIRSDataProcessor:
         self.use_grid_mapping = use_grid_mapping
         self.grid_size = grid_size
         self.use_interpolation = use_interpolation
+        self.save_plots = save_plots
+        self.plot_dir = Path(plot_dir) if plot_dir else None
 
         # Define subject directory: root_dir / group / subject / task
         self.subject_dir = self.root_dir / self.group / self.subject / self.task_type
@@ -191,6 +195,82 @@ class FNIRSDataProcessor:
         epochs._data = data
         return epochs
 
+    def plot_time_marker(self, save_dir):
+        """Save event time marker plot for the subject."""
+        save_dir = Path(save_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        events, event_id = mne.events_from_annotations(self.preprocessed, verbose=False)
+        if len(events) == 0:
+            logger.warning(f"No events found for {self.subject}, skipping time marker plot.")
+            return
+        fig = mne.viz.plot_events(
+            events, event_id=event_id,
+            sfreq=self.preprocessed.info['sfreq'], show=False
+        )
+        fig.suptitle(f"{self.task_type} Task Time Marker for {self.subject}", fontsize=16)
+        fig.savefig(save_dir / f"{self.task_type}_time_marker.png")
+        plt.close(fig)
+
+    def plot_evoked(self, save_dir):
+        """Save evoked response plot (HbO/HbR/HbT, Baseline vs Task) for the subject."""
+        save_dir = Path(save_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        data = self.preprocessed.copy()
+        if self.task_type in ('SS', 'VF'):
+            data.annotations.rename({"1.0": "Baseline", "3.0": "Task", "4.0": "Task", "5.0": "Task", "6.0": "Task"})
+        else:
+            data.annotations.rename({"1.0": "Baseline", "3.0": "Task"})
+
+        task_durations = {'GNG': 35, 'VF': 60, 'SS': 60, '1backWM': 90}
+        tmax = task_durations.get(self.task_type, 35)
+
+        events, event_id = mne.events_from_annotations(data, verbose=False)
+        if 'Baseline' not in event_id or 'Task' not in event_id:
+            logger.warning(f"Missing Baseline or Task events for {self.subject}, skipping evoked plot.")
+            return
+
+        # Temporarily add HbT for plotting if not present
+        if not any('hbt' in ch for ch in data.ch_names):
+            hbt = data.get_data(picks='hbo') + data.get_data(picks='hbr')
+            hbt_names = [ch.replace('hbo', 'hbt') for ch in self.raw_haemo.ch_names if 'hbo' in ch]
+            hbt_info = create_info(hbt_names, data.info['sfreq'], ch_types='fnirs_cw_amplitude')
+            data.add_channels([mne.io.RawArray(hbt, hbt_info)])
+
+        epochs = mne.Epochs(
+            data, events, event_id, tmin=-5, tmax=tmax,
+            reject_by_annotation=True, proj=True, baseline=None,
+            preload=True, detrend=None, event_repeated='drop', verbose=False
+        )
+        epochs = copy.deepcopy(epochs).apply_baseline(baseline=(-5, 0), verbose=False)
+        epochs.crop(tmin=0, tmax=epochs.tmax)
+
+        picks_hbt = [ch for ch in epochs.ch_names if 'hbt' in ch]
+        evoked_dict = {
+            "Baseline/HbO": epochs["Baseline"].average(picks="hbo"),
+            "Baseline/HbR": epochs["Baseline"].average(picks="hbr"),
+            "Baseline/HbT": epochs["Baseline"].average(picks=picks_hbt),
+            "Task/HbO": epochs["Task"].average(picks="hbo"),
+            "Task/HbR": epochs["Task"].average(picks="hbr"),
+            "Task/HbT": epochs["Task"].average(picks=picks_hbt),
+        }
+        for cond in evoked_dict:
+            evoked_dict[cond].rename_channels(lambda x: x[:-4] if " " in x else x)
+
+        color_dict = dict(HbO="r", HbR="b", HbT="g")
+        styles_dict = {
+            "Baseline/HbO": dict(linestyle="dashed"),
+            "Baseline/HbR": dict(linestyle="dashed"),
+            "Baseline/HbT": dict(linestyle="dashed"),
+        }
+        fig = mne.viz.plot_compare_evokeds(
+            evoked_dict, combine="mean", ci=0.95,
+            colors=color_dict, styles=styles_dict, show=False
+        )[0]
+        fig.suptitle(f"{self.task_type} Task Evoked for {self.subject}", fontsize=16)
+        fig.savefig(save_dir / f"{self.task_type}_evoked.png")
+        plt.close(fig)
+
     def get_channel_positions(self, signal_type):
         """Return the 23-channel → 5×7 grid position mapping."""
         return {
@@ -259,6 +339,7 @@ class FNIRSDataProcessor:
             baseline=None,
             preload=True,
             detrend=None,
+            event_repeated='drop',
             verbose=False
         )
 
@@ -268,8 +349,13 @@ class FNIRSDataProcessor:
             def z(ts): return (ts - ts.mean()) / ts.std()
             epochs.apply_function(z, picks=None, channel_wise=True, verbose=False)
 
-        # Select only task events (3.0) and crop
-        if '3.0' in epochs.event_id:
+        # Select only task events and crop
+        _MULTI_EVENTS = {'3.0', '4.0', '5.0', '6.0'}
+        if self.task_type in ('SS', 'VF'):
+            task_evs = [k for k in epochs.event_id if k in _MULTI_EVENTS]
+            if task_evs:
+                epochs = epochs[task_evs]
+        elif '3.0' in epochs.event_id:
             epochs = epochs['3.0']
         epochs = epochs.crop(tmin=3, tmax=epochs.tmax)
 
@@ -302,6 +388,10 @@ class FNIRSDataProcessor:
         if self.data_type == 'hbt':
             self.generate_hbt()
         self.modify_annotations()
+        if self.save_plots:
+            plot_save_dir = self.plot_dir if self.plot_dir else self.subject_dir.parent
+            self.plot_time_marker(plot_save_dir)
+            self.plot_evoked(plot_save_dir)
         return self.epoch()
 
 class FNIRSDataset:
@@ -324,6 +414,7 @@ class FNIRSDataset:
         use_grid_mapping=False,
         grid_size=(5, 7),
         use_interpolation=True,
+        save_plots=False,
     ):
         self.root_dir = Path(root_dir)
         self.output_dir = Path(output_dir)
@@ -339,6 +430,7 @@ class FNIRSDataset:
         self.use_grid_mapping = use_grid_mapping
         self.grid_size = grid_size
         self.use_interpolation = use_interpolation
+        self.save_plots = save_plots
         self.logger = logging.getLogger(f"{__name__}.FNIRSDataset")
         self.logger.info(f"FNIRSDataset initialized: task_type={self.task_type}, data_type={self.data_type}, "
                          f"apply_baseline={self.apply_baseline}, apply_zscore={self.apply_zscore}, "
@@ -352,6 +444,7 @@ class FNIRSDataset:
             for subj in subjects:
                 self.logger.info(f"Processing subject '{subj}' in group '{group}'")
                 try:
+                    plot_dir = self.output_dir / self.task_type / group / subj
                     proc = FNIRSDataProcessor(
                         self.root_dir,
                         subj,
@@ -366,6 +459,8 @@ class FNIRSDataset:
                         use_grid_mapping=self.use_grid_mapping,
                         grid_size=self.grid_size,
                         use_interpolation=self.use_interpolation,
+                        save_plots=self.save_plots,
+                        plot_dir=plot_dir,
                     )
 
                     base = self.output_dir / self.task_type / group / subj / self.data_type
@@ -607,6 +702,12 @@ Example subjects.json format:
         help='Disable Gaussian RBF interpolation for empty grid cells (only with --use-grid-mapping)'
     )
 
+    parser.add_argument(
+        '--save-plots',
+        action='store_true',
+        help='Save *_time_marker.png and *_evoked.png plots per subject to the output directory'
+    )
+
     return parser.parse_args()
 
 
@@ -668,6 +769,7 @@ def main():
         if args.mode == 'single':
             logger.info(f"Processing single subject: {args.subject} (group: {args.group}, task: {args.task})")
 
+            plot_dir = Path(args.output_dir) / args.task / args.group / args.subject if args.output_dir else None
             processor = FNIRSDataProcessor(
                 root_dir=args.root_dir,
                 subject=args.subject,
@@ -683,6 +785,8 @@ def main():
                 use_grid_mapping=args.use_grid_mapping,
                 grid_size=grid_size,
                 use_interpolation=use_interpolation,
+                save_plots=args.save_plots,
+                plot_dir=plot_dir,
             )
 
             epoch_data = processor.process()
@@ -719,6 +823,7 @@ def main():
                 use_grid_mapping=args.use_grid_mapping,
                 grid_size=grid_size,
                 use_interpolation=use_interpolation,
+                save_plots=args.save_plots,
             )
 
             dataset.process()
