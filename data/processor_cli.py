@@ -345,11 +345,8 @@ class FNIRSDataProcessor:
 
         if self.apply_baseline:
             epochs = self._baseline_correction(epochs)
-        if self.apply_zscore:
-            def z(ts): return (ts - ts.mean()) / ts.std()
-            epochs.apply_function(z, picks=None, channel_wise=True, verbose=False)
 
-        # Select only task events and crop
+        # Select only task events
         _MULTI_EVENTS = {'3.0', '4.0', '5.0', '6.0'}
         if self.task_type in ('SS', 'VF'):
             task_evs = [k for k in epochs.event_id if k in _MULTI_EVENTS]
@@ -357,7 +354,15 @@ class FNIRSDataProcessor:
                 epochs = epochs[task_evs]
         elif '3.0' in epochs.event_id:
             epochs = epochs['3.0']
-        epochs = epochs.crop(tmin=3, tmax=epochs.tmax)
+
+        # Crop per-task preparation window before z-score so stats reflect only task data
+        _PREP_CROP = {'GNG': 3, 'SS': 7, '1backWM': 5, 'VF': 7}
+        tmin_crop = _PREP_CROP.get(self.task_type, 3)
+        epochs = epochs.crop(tmin=tmin_crop, tmax=epochs.tmax)
+
+        if self.apply_zscore:
+            def z(ts): return (ts - ts.mean()) / (ts.std() + 1e-8)
+            epochs.apply_function(z, picks=None, channel_wise=True, verbose=False)
 
         channel_positions = self.get_channel_positions(self.data_type) if self.use_grid_mapping else None
 
