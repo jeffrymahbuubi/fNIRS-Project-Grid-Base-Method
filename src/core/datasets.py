@@ -102,6 +102,27 @@ class AddGaussianNoise(nn.Module):
         return x + torch.randn_like(x) * self.std + self.mean
 
 
+class TransformWrapper(Dataset):
+    """Wraps a Subset with its own independent transform.
+
+    Fixes the shared-dataset transform aliasing bug where assigning
+    .transform to one Subset overwrites it for all Subsets that share
+    the same underlying Dataset object.
+    """
+    def __init__(self, subset, transform=None):
+        self.subset = subset
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.subset)
+
+    def __getitem__(self, idx):
+        sequence, label, subject = self.subset[idx]
+        if self.transform:
+            sequence = self.transform(sequence)
+        return sequence, label, subject
+
+
 def get_loso_subject_loaders(dataset, batch_size, num_workers, train_transform=None,
                              val_transform=None):
     subject_to_indices = defaultdict(list)
@@ -121,14 +142,14 @@ def get_loso_subject_loaders(dataset, batch_size, num_workers, train_transform=N
         print(f"  Validation subject: {val_subject}")
         print(f"  Number of training sequences: {len(train_indices)}")
         print(f"  Number of validation sequences: {len(val_indices)}")
-        train_dataset = Subset(dataset, train_indices)
-        val_dataset = Subset(dataset, val_indices)
-        train_dataset.dataset.transform = train_transform
-        val_dataset.dataset.transform = val_transform
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
-                                  num_workers=num_workers)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False,
-                                num_workers=num_workers)
+        train_loader = DataLoader(
+            TransformWrapper(Subset(dataset, train_indices), train_transform),
+            batch_size=batch_size, shuffle=True, num_workers=num_workers
+        )
+        val_loader = DataLoader(
+            TransformWrapper(Subset(dataset, val_indices), val_transform),
+            batch_size=batch_size, shuffle=False, num_workers=num_workers
+        )
         fold_data.append((train_loader, val_loader, val_subject))
     return fold_data
 
@@ -164,14 +185,14 @@ def get_stratified_kfold_subject_loaders(dataset, k_folds, batch_size, num_worke
         val_labels = [dataset.labels[i] for i in val_indices]
         print(f"  Train class distribution: {dict(zip(*np.unique(train_labels, return_counts=True)))}")
         print(f"  Validation class distribution: {dict(zip(*np.unique(val_labels, return_counts=True)))}")
-        train_dataset = Subset(dataset, train_indices)
-        val_dataset = Subset(dataset, val_indices)
-        train_dataset.dataset.transform = train_transform
-        val_dataset.dataset.transform = val_transform
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
-                                  num_workers=num_workers)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False,
-                                num_workers=num_workers)
+        train_loader = DataLoader(
+            TransformWrapper(Subset(dataset, train_indices), train_transform),
+            batch_size=batch_size, shuffle=True, num_workers=num_workers
+        )
+        val_loader = DataLoader(
+            TransformWrapper(Subset(dataset, val_indices), val_transform),
+            batch_size=batch_size, shuffle=False, num_workers=num_workers
+        )
         fold_data.append((train_loader, val_loader))
     return fold_data
 
@@ -190,14 +211,14 @@ def get_holdout_subject_loaders(dataset, test_size, batch_size, num_workers,
     print(f"  Number of validation subjects: {len(val_subjects)}")
     print(f"  Number of training sequences: {len(train_indices)}")
     print(f"  Number of validation sequences: {len(val_indices)}")
-    train_dataset = Subset(dataset, train_indices)
-    val_dataset = Subset(dataset, val_indices)
-    train_dataset.dataset.transform = train_transform
-    val_dataset.dataset.transform = val_transform
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
-                              num_workers=num_workers)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False,
-                            num_workers=num_workers)
+    train_loader = DataLoader(
+        TransformWrapper(Subset(dataset, train_indices), train_transform),
+        batch_size=batch_size, shuffle=True, num_workers=num_workers
+    )
+    val_loader = DataLoader(
+        TransformWrapper(Subset(dataset, val_indices), val_transform),
+        batch_size=batch_size, shuffle=False, num_workers=num_workers
+    )
     return train_loader, val_loader
 
 
