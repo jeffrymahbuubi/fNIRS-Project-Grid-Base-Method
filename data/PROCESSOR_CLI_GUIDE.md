@@ -332,6 +332,24 @@ output_dir/
 
 > Epochs with `--use-grid-mapping` are directly consumable by `src/core/datasets.py` and the ViT training pipeline.
 
+## Compress & Transfer Processed Data
+
+### Compress
+
+```bash
+tar -czf processed.tar.gz -C /path/to/data processed
+```
+
+### Extract
+
+```bash
+tar -xzf processed.tar.gz
+# or to a specific location:
+tar -xzf processed.tar.gz -C /target/directory
+```
+
+> **Tip**: Use `-cjf` / `-xjf` for `.tar.bz2` (smaller) or `-cJf` / `-xJf` for `.tar.xz` (smallest but slowest).
+
 ## Tips
 
 1. **Start with single mode** to test parameters on one subject before batch processing
