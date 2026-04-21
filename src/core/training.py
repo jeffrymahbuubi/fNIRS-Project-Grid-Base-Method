@@ -44,7 +44,8 @@ def _make_loss_fn(use_class_weights: bool, use_sqrt: bool, train_loader, device)
 def train(
     model, train_loader, optimizer, loss_fn, device,
     epoch: int = None, n_epochs: int = None,
-    verbose: bool = True, log_freq: int = 10
+    verbose: bool = True, log_freq: int = 10,
+    use_amp: bool = False
 ) -> Tuple[float, float, float]:
     model.train()
     total_loss = 0.0
@@ -52,12 +53,14 @@ def train(
     f1_m = torchmetrics.F1Score(task='binary').to(device)
     total_batches = len(train_loader)
     epoch_str = f"{epoch+1}/{n_epochs}" if (epoch is not None and n_epochs) else "?"
+    amp_device = device if isinstance(device, str) else device.type
 
     for batch_idx, (data, target, *_) in enumerate(train_loader):
         data, target = data.to(device), target.to(device).long()
         optimizer.zero_grad()
-        logits = model(data)
-        loss = loss_fn(logits, target)
+        with torch.autocast(device_type=amp_device, dtype=torch.bfloat16, enabled=use_amp):
+            logits = model(data)
+            loss = loss_fn(logits, target)
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
@@ -76,7 +79,7 @@ def train(
 def val(
     model, val_loader, loss_fn, device,
     epoch: int = None, n_epochs: int = None,
-    verbose: bool = True
+    verbose: bool = True, use_amp: bool = False
 ) -> Tuple[float, float, float, float, float, float, np.ndarray, list, list]:
     model.eval()
     total_loss = 0.0
@@ -85,12 +88,14 @@ def val(
     prec_m = torchmetrics.Precision(task='binary').to(device)
     rec_m = torchmetrics.Recall(task='binary').to(device)
     all_preds, all_labels = [], []
+    amp_device = device if isinstance(device, str) else device.type
 
     with torch.no_grad():
         for data, target, *_ in val_loader:
             data, target = data.to(device), target.to(device).long()
-            logits = model(data)
-            total_loss += loss_fn(logits, target).item()
+            with torch.autocast(device_type=amp_device, dtype=torch.bfloat16, enabled=use_amp):
+                logits = model(data)
+                total_loss += loss_fn(logits, target).item()
             preds = torch.argmax(logits, dim=-1)
             acc_m.update(preds, target)
             f1_m.update(preds, target)
@@ -214,7 +219,7 @@ def _empty_fold_metrics():
 
 
 def _run_fold(model, optimizer, scheduler, train_loader, val_loader, device,
-              epochs_count, loss_fn, patience):
+              epochs_count, loss_fn, patience, use_amp: bool = False):
     early_stopper = EarlyStopping(patience=patience)
     best_model_state = None
     best_val_f1 = -1.0
@@ -224,11 +229,11 @@ def _run_fold(model, optimizer, scheduler, train_loader, val_loader, device,
     for epoch in range(epochs_count):
         tr_loss, tr_acc, tr_f1 = train(
             model, train_loader, optimizer, loss_fn, device,
-            epoch=epoch, n_epochs=epochs_count
+            epoch=epoch, n_epochs=epochs_count, use_amp=use_amp
         )
         vl_loss, vl_acc, vl_f1, *_ = val(
             model, val_loader, loss_fn, device,
-            epoch=epoch, n_epochs=epochs_count, verbose=False
+            epoch=epoch, n_epochs=epochs_count, verbose=False, use_amp=use_amp
         )
         history['train_loss'].append(tr_loss)
         history['train_accuracy'].append(tr_acc)
@@ -250,11 +255,12 @@ def _run_fold(model, optimizer, scheduler, train_loader, val_loader, device,
     return history, best_epoch, best_model_state
 
 
-def _collect_fold_results(model, val_loader, device, loss_fn, best_model_state, fold_metrics, history):
+def _collect_fold_results(model, val_loader, device, loss_fn, best_model_state, fold_metrics, history,
+                          use_amp: bool = False):
     if best_model_state is not None:
         model.load_state_dict({k: v.to(device) for k, v in best_model_state.items()})
     _, acc, f1, precision, sensitivity, specificity, cm, true_labels, pred_labels = val(
-        model, val_loader, loss_fn, device, verbose=True
+        model, val_loader, loss_fn, device, verbose=True, use_amp=use_amp
     )
     for key in ['train_loss', 'train_accuracy', 'train_f1', 'val_loss', 'val_accuracy', 'val_f1']:
         fold_metrics[key].append(history[key])
@@ -300,6 +306,7 @@ def perform_holdout_training(
         batch_size=batch_size, test_size=test_size, use_stratified_kfold=False,
         max_trials=max_trials, train_transform=train_transform, val_transform=val_transform
     )
+    use_amp = training_configuration.use_amp
     loss_fn = _make_loss_fn(use_class_weights, use_sqrt_class_weights, train_loader, device)
     os.makedirs(save_dir, exist_ok=True)
     best_model_path = os.path.join(save_dir, f"{model_name}.pt")
@@ -308,14 +315,14 @@ def perform_holdout_training(
     t_begin = time.time()
     history, best_epoch, best_model_state = _run_fold(
         model, optimizer, scheduler, train_loader, val_loader, device,
-        training_configuration.epochs_count, loss_fn, patience
+        training_configuration.epochs_count, loss_fn, patience, use_amp=use_amp
     )
     print(f"Holdout finished in {time.time()-t_begin:.2f}s. Best epoch: {best_epoch+1}")
     if best_model_state is not None:
         model.load_state_dict({k: v.to(device) for k, v in best_model_state.items()})
         torch.save(model.state_dict(), best_model_path)
     _, final_acc, final_f1, final_prec, final_sens, final_spec, final_cm, final_labels, final_preds = val(
-        model, val_loader, loss_fn, device, verbose=True
+        model, val_loader, loss_fn, device, verbose=True, use_amp=use_amp
     )
     name = f"{model_name}_holdout"
     plot_training_curves(history, save_dir, name, best_epoch)
@@ -346,6 +353,7 @@ def perform_kfold_training(
         use_stratified_kfold=True, max_trials=max_trials,
         train_transform=train_transform, val_transform=val_transform
     )
+    use_amp = training_configuration.use_amp
     os.makedirs(save_dir, exist_ok=True)
     fold_metrics = _empty_fold_metrics()
     for fold_idx, (train_loader, val_loader) in enumerate(fold_data):
@@ -357,10 +365,10 @@ def perform_kfold_training(
         scheduler = scheduler_class(optimizer, **scheduler_params)
         history, best_epoch, best_model_state = _run_fold(
             model, optimizer, scheduler, train_loader, val_loader, device,
-            training_configuration.epochs_count, loss_fn, patience
+            training_configuration.epochs_count, loss_fn, patience, use_amp=use_amp
         )
         acc, f1, precision, sensitivity, specificity, cm, true_labels, pred_labels = _collect_fold_results(
-            model, val_loader, device, loss_fn, best_model_state, fold_metrics, history
+            model, val_loader, device, loss_fn, best_model_state, fold_metrics, history, use_amp=use_amp
         )
         fold_name = f"{model_name}_fold_{fold_idx+1}"
         torch.save(model.state_dict(), os.path.join(save_dir, f"{fold_name}.pt"))
@@ -390,6 +398,7 @@ def perform_loso_training(
         batch_size=batch_size, use_loso_cv=True, max_trials=max_trials,
         train_transform=train_transform, val_transform=val_transform
     )
+    use_amp = training_configuration.use_amp
     os.makedirs(save_dir, exist_ok=True)
     fold_metrics = _empty_fold_metrics()
     for fold_idx, (train_loader, val_loader, val_subject) in enumerate(fold_data):
@@ -402,10 +411,10 @@ def perform_loso_training(
         scheduler = scheduler_class(optimizer, **scheduler_params)
         history, best_epoch, best_model_state = _run_fold(
             model, optimizer, scheduler, train_loader, val_loader, device,
-            training_configuration.epochs_count, loss_fn, patience
+            training_configuration.epochs_count, loss_fn, patience, use_amp=use_amp
         )
         acc, f1, precision, sensitivity, specificity, cm, true_labels, pred_labels = _collect_fold_results(
-            model, val_loader, device, loss_fn, best_model_state, fold_metrics, history
+            model, val_loader, device, loss_fn, best_model_state, fold_metrics, history, use_amp=use_amp
         )
         subj_name = f"{model_name}_subject_{val_subject}"
         torch.save(model.state_dict(), os.path.join(save_dir, f"{subj_name}.pt"))

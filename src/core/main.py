@@ -79,6 +79,17 @@ def parse_args():
         action='store_true',
         help="Apply sqrt softening to class weights (only used if --use_class_weights is set)"
     )
+    parser.add_argument(
+        '--patience',
+        type=int,
+        default=25,
+        help="Early stopping patience in epochs (default: 25)"
+    )
+    parser.add_argument(
+        '--use_amp',
+        action='store_true',
+        help="Enable bfloat16 Automatic Mixed Precision (default: off)"
+    )
     return parser.parse_args()
 
 
@@ -95,8 +106,9 @@ def build_experiment_name(args, model_name: str) -> str:
         cw = "_cw"
     else:
         cw = ""
+    amp = "_amp" if args.use_amp else ""
     today = date.today().strftime("%Y%m%d")
-    return f"{model_name}_{args.task}_{args.data_type}_{cv}{cw}_ep{args.epochs}_bs{args.batch_size}_{today}"
+    return f"{model_name}_{args.task}_{args.data_type}_{cv}{cw}{amp}_ep{args.epochs}_bs{args.batch_size}_p{args.patience}_{today}"
 
 
 def main():
@@ -105,7 +117,8 @@ def main():
     train_config = TrainingConfiguration(
         batch_size=args.batch_size,
         epochs_count=args.epochs,
-        device='cuda'
+        device='cuda',
+        use_amp=args.use_amp
     )
     setup_system(SystemConfig)
 
@@ -185,7 +198,8 @@ def main():
         use_sqrt_class_weights=args.sqrt_class_weights,
         max_trials=4,
         train_transform=train_transform,
-        val_transform=val_transform
+        val_transform=val_transform,
+        patience=args.patience
     )
 
 

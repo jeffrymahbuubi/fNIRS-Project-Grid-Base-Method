@@ -13,6 +13,7 @@ class TrainingConfiguration:
     log_interval: int = 10
     test_interval: int = 1
     device: str = 'cuda'
+    use_amp: bool = False
 
 @dataclass
 class SystemConfig:
