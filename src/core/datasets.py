@@ -233,12 +233,9 @@ def create_single_task_dataset(root_dir, task_name, data_type, max_trials=None):
     return dataset
 
 
-def get_data(root_dir, data_type='hbo', task_types=None, batch_size=8, test_size=0.2,
+def get_data(root_dir, data_type='hbo', task_name='GNG', batch_size=8, test_size=0.2,
              num_workers=0, use_stratified_kfold=False, k_folds=5, use_loso_cv=False,
              max_trials=None, train_transform=None, val_transform=None):
-    if task_types is None:
-        task_types = {'GNG': {'window_duration': 0.8}}
-    task_name, _ = next(iter(task_types.items()))
     dataset = create_single_task_dataset(root_dir, task_name, data_type, max_trials)
     print(f"Using single-task dataset for task '{task_name}' with task-specific configuration.")
     print(f"Total samples in dataset: {len(dataset)}")
