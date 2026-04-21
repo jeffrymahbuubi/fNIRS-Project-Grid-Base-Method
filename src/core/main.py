@@ -1,4 +1,6 @@
 from argparse import ArgumentParser
+import os
+from datetime import date
 import torch
 from torch import optim
 from torchvision.transforms.v2 import Compose, UniformTemporalSubsample, Resize
@@ -80,6 +82,23 @@ def parse_args():
     return parser.parse_args()
 
 
+def build_experiment_name(args, model_name: str) -> str:
+    if args.use_loso:
+        cv = "loso"
+    elif args.use_kfold:
+        cv = f"kfold{args.k_folds}"
+    else:
+        cv = "holdout"
+    if args.use_class_weights and args.sqrt_class_weights:
+        cw = "_cwsqrt"
+    elif args.use_class_weights:
+        cw = "_cw"
+    else:
+        cw = ""
+    today = date.today().strftime("%Y%m%d")
+    return f"{model_name}_{args.task}_{args.data_type}_{cv}{cw}_ep{args.epochs}_bs{args.batch_size}_{today}"
+
+
 def main():
     args = parse_args()
 
@@ -142,9 +161,13 @@ def main():
     test_size = 0.2
     model_name = 'ViT'
 
+    exp_name = build_experiment_name(args, model_name)
+    exp_dir = os.path.join(args.save_dir, exp_name)
+    print(f"Experiment dir: {exp_dir}")
+
     training_main(
         data_dir=args.data_dir,
-        save_dir=args.save_dir,
+        save_dir=exp_dir,
         test_size=test_size,
         data_type=data_type,
         model=model,
