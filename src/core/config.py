@@ -9,7 +9,7 @@ class TrainingConfiguration:
     batch_size: int = 8
     epochs_count: int = 100
     learning_rate: float = 0.001
-    num_workers: int = 0
+    num_workers: int = 4
     log_interval: int = 10
     test_interval: int = 1
     device: str = 'cuda'
