@@ -1,11 +1,11 @@
 from argparse import ArgumentParser
 import torch
-from torch import nn, optim
+from torch import optim
 from torchvision.transforms.v2 import Compose, UniformTemporalSubsample, Resize
 
 from .config import TrainingConfiguration, SystemConfig, setup_system
 from .models import ViT
-from .training import main as training_main, CosineWarmupScheduler, LabelSmoothing
+from .training import main as training_main, CosineWarmupScheduler
 from .datasets import RearrangeToTCHW, RearrangeBackToCTHW, ConvertToRGB, AddGaussianNoise
 
 
@@ -60,6 +60,23 @@ def parse_args():
         choices=['GNG', '1backWM', 'VF', 'SS'],
         help="Task to train: GNG, 1backWM, VF, or SS"
     )
+    parser.add_argument(
+        '--data_type',
+        type=str,
+        default='hbt',
+        choices=['hbt', 'hbo', 'hbr', 'all'],
+        help="Hemoglobin concentration type: hbt (total), hbo (oxy), hbr (deoxy), all"
+    )
+    parser.add_argument(
+        '--use_class_weights',
+        action='store_true',
+        help="Enable class weighting via CrossEntropyLoss (default: off)"
+    )
+    parser.add_argument(
+        '--sqrt_class_weights',
+        action='store_true',
+        help="Apply sqrt softening to class weights (only used if --use_class_weights is set)"
+    )
     return parser.parse_args()
 
 
@@ -73,7 +90,7 @@ def main():
     )
     setup_system(SystemConfig)
 
-    num_classes = 1
+    num_classes = 2
     image_size = (128, 128)
     image_patch_size = (8, 8)
     frames = 256
@@ -119,11 +136,9 @@ def main():
 
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     scheduler = CosineWarmupScheduler(optimizer, warmup=10, max_iters=args.epochs)
-    loss_fn = LabelSmoothing(smoothing=0.1)
 
-    # Use the task argument to set up the task configuration
-    task_types = {args.task: {'window_duration': 1}}
-    data_type = 'hbt'
+    task_name = args.task
+    data_type = args.data_type
     test_size = 0.2
     model_name = 'ViT'
 
@@ -134,7 +149,7 @@ def main():
         data_type=data_type,
         model=model,
         model_name=model_name,
-        task_types=task_types,
+        task_name=task_name,
         optimizer=optimizer.__class__,
         optimizer_params={"lr": 1e-3},
         scheduler=scheduler.__class__,
@@ -143,7 +158,8 @@ def main():
         use_kfold=args.use_kfold,
         k_folds=args.k_folds,
         use_loso=args.use_loso,
-        loss_fn=loss_fn,
+        use_class_weights=args.use_class_weights,
+        use_sqrt_class_weights=args.sqrt_class_weights,
         max_trials=4,
         train_transform=train_transform,
         val_transform=val_transform
