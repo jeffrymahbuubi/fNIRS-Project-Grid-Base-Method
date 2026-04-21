@@ -389,7 +389,6 @@ def main(data_dir: str, save_dir: str, test_size: float, data_type: str,
     patience = kwargs.get('patience', 25)
 
     model.to(training_configuration.device)
-    setup_system(SystemConfig)
     os.makedirs(save_dir, exist_ok=True)
 
     if use_loso:
