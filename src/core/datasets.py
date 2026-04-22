@@ -1,6 +1,7 @@
 # pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring, too-many-instance-attributes, too-many-arguments, too-many-locals, redefined-argument-from-local, reimported, invalid-name, wrong-import-order, ungrouped-imports, no-else-return, redefined-outer-name
 
 import os
+import json
 from collections import defaultdict
 
 import numpy as np
@@ -130,7 +131,7 @@ def get_loso_subject_loaders(dataset, batch_size, num_workers, train_transform=N
     for idx, (_, label, subject) in enumerate(dataset):
         subject_to_indices[subject].append(idx)
         subject_labels[subject] = label.item() if hasattr(label, "item") else label
-    subjects = list(subject_to_indices.keys())
+    subjects = sorted(subject_to_indices.keys())
     fold_data = []
     for i, val_subject in enumerate(subjects):
         print(f"\nPreparing fold {i + 1}/{len(subjects)} with validation subject: {val_subject}")
@@ -155,13 +156,63 @@ def get_loso_subject_loaders(dataset, batch_size, num_workers, train_transform=N
 
 
 def get_stratified_kfold_subject_loaders(dataset, k_folds, batch_size, num_workers,
-                                         train_transform=None, val_transform=None):
+                                         train_transform=None, val_transform=None,
+                                         splits_json: str = None):
     subject_to_indices = defaultdict(list)
     subject_labels = {}
     for idx, (_, label, subject) in enumerate(dataset):
         subject_to_indices[subject].append(idx)
         subject_labels[subject] = label.item()
-    subjects = list(subject_to_indices.keys())
+
+    if splits_json is not None:
+        if not os.path.exists(splits_json):
+            raise FileNotFoundError(
+                f"Splits file not found: '{splits_json}'\n"
+                f"Generate it once with: python data/generate_splits.py --processed_dir <dir>"
+            )
+        with open(splits_json) as f:
+            splits = json.load(f)
+        key = f"kfold_{k_folds}"
+        if key not in splits:
+            available = [k for k in splits if k.startswith("kfold_")]
+            raise KeyError(
+                f"No '{key}' entry in '{splits_json}'. Available keys: {available}"
+            )
+        fold_defs = splits[key]
+        fold_data = []
+        for fold_def in fold_defs:
+            val_set = set(fold_def["val_subjects"])
+            train_set = set(fold_def["train_subjects"])
+            missing = (val_set | train_set) - set(subject_to_indices.keys())
+            if missing:
+                raise ValueError(
+                    f"Fold {fold_def['fold']}: subjects in JSON not found in dataset: {missing}"
+                )
+            train_indices = [idx for subj, idxs in subject_to_indices.items()
+                             if subj in train_set for idx in idxs]
+            val_indices = [idx for subj, idxs in subject_to_indices.items()
+                           if subj in val_set for idx in idxs]
+            train_subjects = sorted(train_set)
+            val_subjects_list = sorted(val_set)
+            print(f"\nLoading fold {fold_def['fold']}/{len(fold_defs)} from JSON splits")
+            print(f"  Train trials: { {s: len(subject_to_indices[s]) for s in train_subjects} }")
+            print(f"  Val trials:   { {s: len(subject_to_indices[s]) for s in val_subjects_list} }")
+            train_labels_list = [dataset.labels[i] for i in train_indices]
+            val_labels_list = [dataset.labels[i] for i in val_indices]
+            print(f"  Train dist: {dict(zip(*np.unique(train_labels_list, return_counts=True)))}")
+            print(f"  Val dist:   {dict(zip(*np.unique(val_labels_list, return_counts=True)))}")
+            train_loader = DataLoader(
+                TransformWrapper(Subset(dataset, train_indices), train_transform),
+                batch_size=batch_size, shuffle=True, num_workers=num_workers
+            )
+            val_loader = DataLoader(
+                TransformWrapper(Subset(dataset, val_indices), val_transform),
+                batch_size=batch_size, shuffle=False, num_workers=num_workers
+            )
+            fold_data.append((train_loader, val_loader))
+        return fold_data
+
+    subjects = sorted(subject_to_indices.keys())
     labels = [subject_labels[subject] for subject in subjects]
     skf = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=42)
     fold_data = []
@@ -235,7 +286,7 @@ def create_single_task_dataset(root_dir, task_name, data_type, max_trials=None):
 
 def get_data(root_dir, data_type='hbo', task_name='GNG', batch_size=8, test_size=0.2,
              num_workers=0, use_stratified_kfold=False, k_folds=5, use_loso_cv=False,
-             max_trials=None, train_transform=None, val_transform=None):
+             max_trials=None, train_transform=None, val_transform=None, splits_json=None):
     dataset = create_single_task_dataset(root_dir, task_name, data_type, max_trials)
     print(f"Using single-task dataset for task '{task_name}' with task-specific configuration.")
     print(f"Total samples in dataset: {len(dataset)}")
@@ -246,7 +297,8 @@ def get_data(root_dir, data_type='hbo', task_name='GNG', batch_size=8, test_size
         return get_loso_subject_loaders(dataset, batch_size, num_workers, train_transform, val_transform)
     elif use_stratified_kfold:
         return get_stratified_kfold_subject_loaders(dataset, k_folds, batch_size, num_workers,
-                                                      train_transform, val_transform)
+                                                      train_transform, val_transform,
+                                                      splits_json=splits_json)
     else:
         return get_holdout_subject_loaders(dataset, test_size, batch_size, num_workers,
                                            train_transform, val_transform)

@@ -33,12 +33,12 @@ def calculate_class_weights(train_loader, device, use_sqrt: bool = False) -> tor
     return torch.tensor(weights, dtype=torch.float).to(device)
 
 
-def _make_loss_fn(use_class_weights: bool, use_sqrt: bool, train_loader, device) -> nn.Module:
+def _make_loss_fn(use_class_weights: bool, use_sqrt: bool, train_loader, device, label_smoothing: float = 0.0) -> nn.Module:
     if use_class_weights:
         w = calculate_class_weights(train_loader, device, use_sqrt=use_sqrt)
         print(f"  Class weights: {w.cpu().numpy()} (sqrt={use_sqrt})")
-        return nn.CrossEntropyLoss(weight=w)
-    return nn.CrossEntropyLoss()
+        return nn.CrossEntropyLoss(weight=w, label_smoothing=label_smoothing)
+    return nn.CrossEntropyLoss(label_smoothing=label_smoothing)
 
 
 def train(
@@ -298,7 +298,7 @@ def perform_holdout_training(
     optimizer_class, optimizer_params, scheduler_class, scheduler_params,
     save_dir, model_name, training_configuration,
     use_class_weights: bool = False, use_sqrt_class_weights: bool = False,
-    max_trials=None, train_transform=None, val_transform=None, patience=25
+    max_trials=None, train_transform=None, val_transform=None, patience=25, label_smoothing: float = 0.0
 ):
     device = training_configuration.device
     train_loader, val_loader = get_data(
@@ -307,7 +307,7 @@ def perform_holdout_training(
         max_trials=max_trials, train_transform=train_transform, val_transform=val_transform
     )
     use_amp = training_configuration.use_amp
-    loss_fn = _make_loss_fn(use_class_weights, use_sqrt_class_weights, train_loader, device)
+    loss_fn = _make_loss_fn(use_class_weights, use_sqrt_class_weights, train_loader, device, label_smoothing)
     os.makedirs(save_dir, exist_ok=True)
     best_model_path = os.path.join(save_dir, f"{model_name}.pt")
     optimizer = optimizer_class(model.parameters(), **optimizer_params)
@@ -344,14 +344,16 @@ def perform_kfold_training(
     optimizer_class, optimizer_params, scheduler_class, scheduler_params,
     save_dir, model_name, training_configuration,
     use_class_weights: bool = False, use_sqrt_class_weights: bool = False,
-    max_trials=None, train_transform=None, val_transform=None, patience=25
+    max_trials=None, train_transform=None, val_transform=None, patience=25, label_smoothing: float = 0.0,
+    splits_json: str = None
 ):
     device = training_configuration.device
     fold_data = get_data(
         root_dir=data_dir, data_type=data_type, task_name=task_name,
         batch_size=batch_size, test_size=test_size, k_folds=k_folds,
         use_stratified_kfold=True, max_trials=max_trials,
-        train_transform=train_transform, val_transform=val_transform
+        train_transform=train_transform, val_transform=val_transform,
+        splits_json=splits_json
     )
     use_amp = training_configuration.use_amp
     os.makedirs(save_dir, exist_ok=True)
@@ -359,7 +361,7 @@ def perform_kfold_training(
     for fold_idx, (train_loader, val_loader) in enumerate(fold_data):
         print(f"\nStarting Fold {fold_idx+1}/{k_folds}")
         start_time = time.time()
-        loss_fn = _make_loss_fn(use_class_weights, use_sqrt_class_weights, train_loader, device)
+        loss_fn = _make_loss_fn(use_class_weights, use_sqrt_class_weights, train_loader, device, label_smoothing)
         _reset_model(model)
         optimizer = optimizer_class(model.parameters(), **optimizer_params)
         scheduler = scheduler_class(optimizer, **scheduler_params)
@@ -390,7 +392,7 @@ def perform_loso_training(
     optimizer_class, optimizer_params, scheduler_class, scheduler_params,
     save_dir, model_name, training_configuration,
     use_class_weights: bool = False, use_sqrt_class_weights: bool = False,
-    max_trials=None, train_transform=None, val_transform=None, patience=25
+    max_trials=None, train_transform=None, val_transform=None, patience=25, label_smoothing: float = 0.0
 ):
     device = training_configuration.device
     fold_data = get_data(
@@ -405,7 +407,7 @@ def perform_loso_training(
         n_folds = len(fold_data)
         print(f"\nLOSO Fold {fold_idx+1}/{n_folds} — Subject: {val_subject}")
         start_time = time.time()
-        loss_fn = _make_loss_fn(use_class_weights, use_sqrt_class_weights, train_loader, device)
+        loss_fn = _make_loss_fn(use_class_weights, use_sqrt_class_weights, train_loader, device, label_smoothing)
         _reset_model(model)
         optimizer = optimizer_class(model.parameters(), **optimizer_params)
         scheduler = scheduler_class(optimizer, **scheduler_params)
@@ -447,6 +449,8 @@ def main(data_dir: str, save_dir: str, test_size: float, data_type: str,
     train_transform = kwargs.get('train_transform', None)
     val_transform = kwargs.get('val_transform', None)
     patience = kwargs.get('patience', 25)
+    label_smoothing = kwargs.get('label_smoothing', 0.0)
+    splits_json = kwargs.get('splits_json', None)
 
     model.to(training_configuration.device)
     os.makedirs(save_dir, exist_ok=True)
@@ -461,7 +465,8 @@ def main(data_dir: str, save_dir: str, test_size: float, data_type: str,
         use_class_weights=use_class_weights,
         use_sqrt_class_weights=use_sqrt_class_weights,
         max_trials=max_trials, train_transform=train_transform,
-        val_transform=val_transform, patience=patience
+        val_transform=val_transform, patience=patience,
+        label_smoothing=label_smoothing, splits_json=splits_json
     )
 
     if use_loso:

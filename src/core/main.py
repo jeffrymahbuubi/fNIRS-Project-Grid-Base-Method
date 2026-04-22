@@ -90,6 +90,18 @@ def parse_args():
         action='store_true',
         help="Enable bfloat16 Automatic Mixed Precision (default: off)"
     )
+    parser.add_argument(
+        '--label_smoothing',
+        type=float,
+        default=0.0,
+        help="Label smoothing epsilon for CrossEntropyLoss, e.g. 0.1 (default: 0.0, off)"
+    )
+    parser.add_argument(
+        '--splits_json',
+        type=str,
+        default=None,
+        help="Path to predefined k-fold splits JSON (required when --use_kfold is set)"
+    )
     return parser.parse_args()
 
 
@@ -107,12 +119,20 @@ def build_experiment_name(args, model_name: str) -> str:
     else:
         cw = ""
     amp = "_amp" if args.use_amp else ""
+    ls = f"_ls{int(args.label_smoothing * 100)}" if args.label_smoothing > 0 else ""
     today = date.today().strftime("%Y%m%d")
-    return f"{model_name}_{args.task}_{args.data_type}_{cv}{cw}{amp}_ep{args.epochs}_bs{args.batch_size}_p{args.patience}_{today}"
+    return f"{model_name}_{args.task}_{args.data_type}_{cv}{cw}{amp}{ls}_ep{args.epochs}_bs{args.batch_size}_p{args.patience}_{today}"
 
 
 def main():
     args = parse_args()
+
+    if args.use_kfold and not args.splits_json:
+        import sys
+        print("error: --splits_json is required when --use_kfold is set.\n"
+              "Generate it once with: python data/generate_splits.py --processed_dir <dir>",
+              file=sys.stderr)
+        sys.exit(2)
 
     train_config = TrainingConfiguration(
         batch_size=args.batch_size,
@@ -199,7 +219,9 @@ def main():
         max_trials=4,
         train_transform=train_transform,
         val_transform=val_transform,
-        patience=args.patience
+        patience=args.patience,
+        label_smoothing=args.label_smoothing,
+        splits_json=args.splits_json
     )
 
 
