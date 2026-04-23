@@ -102,6 +102,11 @@ def parse_args():
         default=None,
         help="Path to predefined k-fold splits JSON (required when --use_kfold is set)"
     )
+    parser.add_argument(
+        '--resume',
+        action='store_true',
+        help="Resume LOSO training — skip subjects whose .pt and .pkl already exist in save_dir"
+    )
     return parser.parse_args()
 
 
@@ -221,7 +226,8 @@ def main():
         val_transform=val_transform,
         patience=args.patience,
         label_smoothing=args.label_smoothing,
-        splits_json=args.splits_json
+        splits_json=args.splits_json,
+        resume=args.resume
     )
 
 
