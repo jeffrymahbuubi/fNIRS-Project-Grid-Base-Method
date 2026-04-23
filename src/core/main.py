@@ -25,7 +25,7 @@ def parse_args():
         '--save_dir',
         type=str,
         default='./experiments/saved_models',
-        help="Directory to save models"
+        help="Base directory for new experiments. When --resume is set, must be the full path to the existing experiment directory."
     )
     parser.add_argument(
         '--batch_size',
@@ -105,7 +105,7 @@ def parse_args():
     parser.add_argument(
         '--resume',
         action='store_true',
-        help="Resume LOSO training — skip subjects whose .pt and .pkl already exist in save_dir"
+        help="Resume training — skip folds/subjects already trained. Requires --save_dir to point to the existing experiment directory."
     )
     return parser.parse_args()
 
@@ -142,6 +142,15 @@ def main():
     if args.resume and not (args.use_loso or args.use_kfold):
         import sys
         print("error: --resume is only valid with --use_loso or --use_kfold", file=sys.stderr)
+        sys.exit(2)
+
+    if args.resume and not os.path.isdir(args.save_dir):
+        import sys
+        print(f"error: --resume requires --save_dir to be an existing experiment directory.\n"
+              f"  '{args.save_dir}' does not exist.\n"
+              f"  Pass the full path to the original experiment folder, e.g.:\n"
+              f"  --save_dir experiments/saved_models/ViT_GNG_hbt_loso_cwsqrt_ep200_bs8_p100_20260422",
+              file=sys.stderr)
         sys.exit(2)
 
     train_config = TrainingConfiguration(
@@ -204,9 +213,13 @@ def main():
     test_size = 0.2
     model_name = 'ViT'
 
-    exp_name = build_experiment_name(args, model_name)
-    exp_dir = os.path.join(args.save_dir, exp_name)
-    print(f"Experiment dir: {exp_dir}")
+    if args.resume:
+        exp_dir = args.save_dir
+        print(f"Resuming experiment: {exp_dir}")
+    else:
+        exp_name = build_experiment_name(args, model_name)
+        exp_dir = os.path.join(args.save_dir, exp_name)
+        print(f"Experiment dir: {exp_dir}")
 
     training_main(
         data_dir=args.data_dir,
