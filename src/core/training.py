@@ -346,7 +346,7 @@ def perform_kfold_training(
     save_dir, model_name, training_configuration,
     use_class_weights: bool = False, use_sqrt_class_weights: bool = False,
     max_trials=None, train_transform=None, val_transform=None, patience=25, label_smoothing: float = 0.0,
-    splits_json: str = None
+    splits_json: str = None, resume: bool = False
 ):
     device = training_configuration.device
     fold_data = get_data(
@@ -360,6 +360,26 @@ def perform_kfold_training(
     os.makedirs(save_dir, exist_ok=True)
     fold_metrics = _empty_fold_metrics()
     for fold_idx, (train_loader, val_loader) in enumerate(fold_data):
+        fold_name = f"{model_name}_fold_{fold_idx+1}"
+        fold_pt = os.path.join(save_dir, f"{fold_name}.pt")
+        fold_pkl = os.path.join(save_dir, f"{fold_name}.pkl")
+
+        if resume and os.path.exists(fold_pt) and os.path.exists(fold_pkl):
+            print(f"\nKFold Fold {fold_idx+1}/{k_folds} [SKIPPED — already trained]")
+            with open(fold_pkl, "rb") as f:
+                saved = pk.load(f)
+            for key in ['train_loss', 'train_accuracy', 'train_f1', 'val_loss', 'val_accuracy', 'val_f1']:
+                fold_metrics[key].append(saved.get(key, []))
+            fold_metrics["accuracies"].append(saved["accuracy"])
+            fold_metrics["precisions"].append(saved["precision"])
+            fold_metrics["sensitivity"].append(saved["sensitivity"])
+            fold_metrics["specificity"].append(saved["specificity"])
+            fold_metrics["f1_scores"].append(saved["f1_score"])
+            fold_metrics["conf_matrix"] += saved["conf_matrix"]
+            fold_metrics["true_labels"].extend(saved["true_labels"])
+            fold_metrics["pred_labels"].extend(saved["pred_labels"])
+            continue
+
         print(f"\nStarting Fold {fold_idx+1}/{k_folds}")
         start_time = time.time()
         loss_fn = _make_loss_fn(use_class_weights, use_sqrt_class_weights, train_loader, device, label_smoothing)
@@ -373,7 +393,6 @@ def perform_kfold_training(
         acc, f1, precision, sensitivity, specificity, cm, true_labels, pred_labels = _collect_fold_results(
             model, val_loader, device, loss_fn, best_model_state, fold_metrics, history, use_amp=use_amp
         )
-        fold_name = f"{model_name}_fold_{fold_idx+1}"
         torch.save(model.state_dict(), os.path.join(save_dir, f"{fold_name}.pt"))
         plot_training_curves(history, save_dir, fold_name, best_epoch)
         _plot_confusion_matrix(cm, save_dir, fold_name, best_epoch)
@@ -495,7 +514,7 @@ def main(data_dir: str, save_dir: str, test_size: float, data_type: str,
         fold_metrics = perform_loso_training(**shared, resume=resume)
         _compute_overall_metrics(fold_metrics, save_dir, model_name, "loso")
     elif use_kfold:
-        fold_metrics = perform_kfold_training(**shared, test_size=test_size, k_folds=k_folds)
+        fold_metrics = perform_kfold_training(**shared, test_size=test_size, k_folds=k_folds, resume=resume)
         _compute_overall_metrics(fold_metrics, save_dir, model_name, "kfold")
     else:
         perform_holdout_training(**shared, test_size=test_size)

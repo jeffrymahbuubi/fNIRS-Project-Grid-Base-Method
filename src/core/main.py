@@ -139,6 +139,11 @@ def main():
               file=sys.stderr)
         sys.exit(2)
 
+    if args.resume and not (args.use_loso or args.use_kfold):
+        import sys
+        print("error: --resume is only valid with --use_loso or --use_kfold", file=sys.stderr)
+        sys.exit(2)
+
     train_config = TrainingConfiguration(
         batch_size=args.batch_size,
         epochs_count=args.epochs,
