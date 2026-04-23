@@ -298,7 +298,8 @@ def perform_holdout_training(
     optimizer_class, optimizer_params, scheduler_class, scheduler_params,
     save_dir, model_name, training_configuration,
     use_class_weights: bool = False, use_sqrt_class_weights: bool = False,
-    max_trials=None, train_transform=None, val_transform=None, patience=25, label_smoothing: float = 0.0
+    max_trials=None, train_transform=None, val_transform=None, patience=25, label_smoothing: float = 0.0,
+    splits_json: str = None
 ):
     device = training_configuration.device
     train_loader, val_loader = get_data(
@@ -392,7 +393,8 @@ def perform_loso_training(
     optimizer_class, optimizer_params, scheduler_class, scheduler_params,
     save_dir, model_name, training_configuration,
     use_class_weights: bool = False, use_sqrt_class_weights: bool = False,
-    max_trials=None, train_transform=None, val_transform=None, patience=25, label_smoothing: float = 0.0
+    max_trials=None, train_transform=None, val_transform=None, patience=25, label_smoothing: float = 0.0,
+    splits_json: str = None
 ):
     device = training_configuration.device
     fold_data = get_data(
