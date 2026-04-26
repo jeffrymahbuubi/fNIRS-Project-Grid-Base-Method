@@ -235,6 +235,11 @@ def main():
     if args.resume:
         exp_dir = args.save_dir
         print(f"Resuming experiment: {exp_dir}")
+        config_out = os.path.join(exp_dir, 'config.yaml')
+        if not os.path.exists(config_out):
+            with open(config_out, 'w') as f:
+                yaml.dump(vars(args), f, default_flow_style=False, sort_keys=True)
+            print(f"Config backfilled: {config_out}")
     else:
         exp_name = build_experiment_name(args, model_name)
         exp_dir = os.path.join(args.save_dir, exp_name)
