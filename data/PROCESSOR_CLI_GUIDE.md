@@ -350,6 +350,20 @@ tar -xzf processed.tar.gz -C /target/directory
 
 > **Tip**: Use `-cjf` / `-xjf` for `.tar.bz2` (smaller) or `-cJf` / `-xJf` for `.tar.xz` (smallest but slowest).
 
+## Excluded Subjects
+
+Five subjects present in the raw data were excluded from `subjects.json` and batch processing because they completed only a **partial set of cognitive tasks** (fewer than the required 4: `1backWM`, `GNG`, `SS`, `VF`). Including them would create an incomplete cross-task dataset and cause missing-file errors during batch processing.
+
+| Subject | Group | Tasks Completed | Missing Task(s) |
+|---------|-------|-----------------|-----------------|
+| AH047 | healthy | GNG, SS, VF | `1backWM` |
+| AA011 | anxiety | 1backWM, GNG, SS | `VF` |
+| EA012 | anxiety | 1backWM, GNG, VF | `SS` |
+| EA016 | anxiety | GNG, VF | `1backWM`, `SS` |
+| LA053 | anxiety | 1backWM, GNG, SS | `VF` |
+
+These subjects' raw data remains in `data/raw/` and can be used for single-task analyses if needed. The final dataset used for model training is **32 healthy + 16 anxiety = 48 subjects**, all with complete 4-task recordings.
+
 ## Tips
 
 1. **Start with single mode** to test parameters on one subject before batch processing
