@@ -5,17 +5,6 @@ import numpy as np
 import random
 
 @dataclass
-class TrainingConfiguration:
-    batch_size: int = 8
-    epochs_count: int = 100
-    learning_rate: float = 0.001
-    num_workers: int = 4
-    log_interval: int = 10
-    test_interval: int = 1
-    device: str = 'cuda'
-    use_amp: bool = False
-
-@dataclass
 class SystemConfig:
     seed: int = 42  # seed number to set the state of all random number generators
     cudnn_benchmark_enabled: bool = False  # enable CuDNN benchmark for the sake of performance

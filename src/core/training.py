@@ -18,7 +18,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from .datasets import get_data
-from .config import TrainingConfiguration
 
 
 def calculate_class_weights(train_loader, device, use_sqrt: bool = False) -> torch.Tensor:
@@ -296,18 +295,17 @@ def _compute_overall_metrics(fold_metrics, save_dir, model_name, suffix):
 def perform_holdout_training(
     data_dir, data_type, test_size, task_name, batch_size, model,
     optimizer_class, optimizer_params, scheduler_class, scheduler_params,
-    save_dir, model_name, training_configuration,
+    save_dir, model_name, device: str = 'cuda', use_amp: bool = False, epochs_count: int = 100,
     use_class_weights: bool = False, use_sqrt_class_weights: bool = False,
     max_trials=None, train_transform=None, val_transform=None, patience=25, label_smoothing: float = 0.0,
-    splits_json: str = None
+    splits_json: str = None, num_workers: int = 1
 ):
-    device = training_configuration.device
     train_loader, val_loader = get_data(
         root_dir=data_dir, data_type=data_type, task_name=task_name,
         batch_size=batch_size, test_size=test_size, use_stratified_kfold=False,
-        max_trials=max_trials, train_transform=train_transform, val_transform=val_transform
+        max_trials=max_trials, train_transform=train_transform, val_transform=val_transform,
+        num_workers=num_workers
     )
-    use_amp = training_configuration.use_amp
     loss_fn = _make_loss_fn(use_class_weights, use_sqrt_class_weights, train_loader, device, label_smoothing)
     os.makedirs(save_dir, exist_ok=True)
     best_model_path = os.path.join(save_dir, f"{model_name}.pt")
@@ -316,7 +314,7 @@ def perform_holdout_training(
     t_begin = time.time()
     history, best_epoch, best_model_state = _run_fold(
         model, optimizer, scheduler, train_loader, val_loader, device,
-        training_configuration.epochs_count, loss_fn, patience, use_amp=use_amp
+        epochs_count, loss_fn, patience, use_amp=use_amp
     )
     print(f"Holdout finished in {time.time()-t_begin:.2f}s. Best epoch: {best_epoch+1}")
     if best_model_state is not None:
@@ -343,20 +341,18 @@ def perform_holdout_training(
 def perform_kfold_training(
     data_dir, data_type, test_size, task_name, batch_size, k_folds, model,
     optimizer_class, optimizer_params, scheduler_class, scheduler_params,
-    save_dir, model_name, training_configuration,
+    save_dir, model_name, device: str = 'cuda', use_amp: bool = False, epochs_count: int = 100,
     use_class_weights: bool = False, use_sqrt_class_weights: bool = False,
     max_trials=None, train_transform=None, val_transform=None, patience=25, label_smoothing: float = 0.0,
-    splits_json: str = None, resume: bool = False
+    splits_json: str = None, resume: bool = False, num_workers: int = 1
 ):
-    device = training_configuration.device
     fold_data = get_data(
         root_dir=data_dir, data_type=data_type, task_name=task_name,
         batch_size=batch_size, test_size=test_size, k_folds=k_folds,
         use_stratified_kfold=True, max_trials=max_trials,
         train_transform=train_transform, val_transform=val_transform,
-        splits_json=splits_json
+        splits_json=splits_json, num_workers=num_workers
     )
-    use_amp = training_configuration.use_amp
     os.makedirs(save_dir, exist_ok=True)
     fold_metrics = _empty_fold_metrics()
     for fold_idx, (train_loader, val_loader) in enumerate(fold_data):
@@ -388,7 +384,7 @@ def perform_kfold_training(
         scheduler = scheduler_class(optimizer, **scheduler_params)
         history, best_epoch, best_model_state = _run_fold(
             model, optimizer, scheduler, train_loader, val_loader, device,
-            training_configuration.epochs_count, loss_fn, patience, use_amp=use_amp
+            epochs_count, loss_fn, patience, use_amp=use_amp
         )
         acc, f1, precision, sensitivity, specificity, cm, true_labels, pred_labels = _collect_fold_results(
             model, val_loader, device, loss_fn, best_model_state, fold_metrics, history, use_amp=use_amp
@@ -410,18 +406,17 @@ def perform_kfold_training(
 def perform_loso_training(
     data_dir, data_type, task_name, batch_size, model,
     optimizer_class, optimizer_params, scheduler_class, scheduler_params,
-    save_dir, model_name, training_configuration,
+    save_dir, model_name, device: str = 'cuda', use_amp: bool = False, epochs_count: int = 100,
     use_class_weights: bool = False, use_sqrt_class_weights: bool = False,
     max_trials=None, train_transform=None, val_transform=None, patience=25, label_smoothing: float = 0.0,
-    splits_json: str = None, resume: bool = False
+    splits_json: str = None, resume: bool = False, num_workers: int = 1
 ):
-    device = training_configuration.device
     fold_data = get_data(
         root_dir=data_dir, data_type=data_type, task_name=task_name,
         batch_size=batch_size, use_loso_cv=True, max_trials=max_trials,
-        train_transform=train_transform, val_transform=val_transform
+        train_transform=train_transform, val_transform=val_transform,
+        num_workers=num_workers
     )
-    use_amp = training_configuration.use_amp
     os.makedirs(save_dir, exist_ok=True)
     fold_metrics = _empty_fold_metrics()
     for fold_idx, (train_loader, val_loader, val_subject) in enumerate(fold_data):
@@ -454,7 +449,7 @@ def perform_loso_training(
         scheduler = scheduler_class(optimizer, **scheduler_params)
         history, best_epoch, best_model_state = _run_fold(
             model, optimizer, scheduler, train_loader, val_loader, device,
-            training_configuration.epochs_count, loss_fn, patience, use_amp=use_amp
+            epochs_count, loss_fn, patience, use_amp=use_amp
         )
         acc, f1, precision, sensitivity, specificity, cm, true_labels, pred_labels = _collect_fold_results(
             model, val_loader, device, loss_fn, best_model_state, fold_metrics, history, use_amp=use_amp
@@ -479,7 +474,10 @@ def main(data_dir: str, save_dir: str, test_size: float, data_type: str,
     optimizer_params = kwargs.get('optimizer_params', {})
     scheduler = kwargs.get('scheduler')
     scheduler_params = kwargs.get('scheduler_params', {})
-    training_configuration = kwargs.get('training_configuration', TrainingConfiguration())
+    device = kwargs.get('device', 'cuda')
+    use_amp = kwargs.get('use_amp', False)
+    epochs_count = kwargs.get('epochs_count', 100)
+    batch_size = kwargs.get('batch_size', 8)
     use_kfold = kwargs.get('use_kfold', False)
     k_folds = kwargs.get('k_folds', 5)
     use_loso = kwargs.get('use_loso', False)
@@ -492,22 +490,24 @@ def main(data_dir: str, save_dir: str, test_size: float, data_type: str,
     label_smoothing = kwargs.get('label_smoothing', 0.0)
     splits_json = kwargs.get('splits_json', None)
     resume = kwargs.get('resume', False)
+    num_workers = kwargs.get('num_workers', 1)
 
-    model.to(training_configuration.device)
+    model.to(device)
     os.makedirs(save_dir, exist_ok=True)
 
     shared = dict(
         data_dir=data_dir, data_type=data_type, task_name=task_name,
-        batch_size=training_configuration.batch_size, model=model,
+        batch_size=batch_size, model=model,
         optimizer_class=optimizer, optimizer_params=optimizer_params,
         scheduler_class=scheduler, scheduler_params=scheduler_params,
         save_dir=save_dir, model_name=model_name,
-        training_configuration=training_configuration,
+        device=device, use_amp=use_amp, epochs_count=epochs_count,
         use_class_weights=use_class_weights,
         use_sqrt_class_weights=use_sqrt_class_weights,
         max_trials=max_trials, train_transform=train_transform,
         val_transform=val_transform, patience=patience,
-        label_smoothing=label_smoothing, splits_json=splits_json
+        label_smoothing=label_smoothing, splits_json=splits_json,
+        num_workers=num_workers
     )
 
     if use_loso:
