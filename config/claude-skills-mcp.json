@@ -11,6 +11,10 @@
     {
       "type": "local",
       "path": "/home/user/jeffrymahbuubi/PROJECTS/1-fNIRS-Grid-Base-Method/.claude/skills"
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/K-Dense-AI/claude-scientific-writer"
     }
   ],
   "embedding_model": "all-MiniLM-L6-v2",

@@ -352,17 +352,39 @@ tar -xzf processed.tar.gz -C /target/directory
 
 ## Excluded Subjects
 
-Five subjects present in the raw data were excluded from `subjects.json` and batch processing because they completed only a **partial set of cognitive tasks** (fewer than the required 4: `1backWM`, `GNG`, `SS`, `VF`). Including them would create an incomplete cross-task dataset and cause missing-file errors during batch processing.
+Sixteen subjects present in `data/raw/` were excluded from `subjects.json` and batch processing because they completed only a **partial set of cognitive tasks** (fewer than the required 4: `1backWM`, `GNG`, `SS`, `VF`). Including them would create an incomplete cross-task dataset and cause missing-file errors during batch processing.
+
+### Group 1 — Early Protocol (10 subjects)
+
+AA001–AA008 and their matched healthy controls AH009–AH010 were recruited under an early study protocol that used `AP` (anxiety-provoking) and `RP` (relaxation-provoking) tasks instead of `SS` and `GNG`. They have only `1backWM` + `VF` and are missing both `SS` and `GNG`.
 
 | Subject | Group | Tasks Completed | Missing Task(s) |
 |---------|-------|-----------------|-----------------|
-| AH047 | healthy | GNG, SS, VF | `1backWM` |
+| AA001 | anxiety | 1backWM, VF | `SS`, `GNG` |
+| AA002 | anxiety | 1backWM, VF | `SS`, `GNG` |
+| AA003 | anxiety | 1backWM, VF | `SS`, `GNG` |
+| AA004 | anxiety | 1backWM, VF | `SS`, `GNG` |
+| AA005 | anxiety | 1backWM, VF | `SS`, `GNG` |
+| AA006 | anxiety | 1backWM, VF | `SS`, `GNG` |
+| AA007 | anxiety | 1backWM, VF | `SS`, `GNG` |
+| AA008 | anxiety | 1backWM, VF | `SS`, `GNG` |
+| AH009 | healthy | 1backWM, VF | `SS`, `GNG` |
+| AH010 | healthy | 1backWM, VF | `SS`, `GNG` |
+
+### Group 2 — Standard Protocol, Incomplete Task Set (6 subjects)
+
+Subjects recruited under the standard protocol but with one or more tasks missing from their recording session.
+
+| Subject | Group | Tasks Completed | Missing Task(s) |
+|---------|-------|-----------------|-----------------|
 | AA011 | anxiety | 1backWM, GNG, SS | `VF` |
 | EA012 | anxiety | 1backWM, GNG, VF | `SS` |
 | EA016 | anxiety | GNG, VF | `1backWM`, `SS` |
 | LA053 | anxiety | 1backWM, GNG, SS | `VF` |
+| AH032 | healthy | 1backWM, SS, VF | `GNG` |
+| AH047 | healthy | GNG, SS, VF | `1backWM` |
 
-These subjects' raw data remains in `data/raw/` and can be used for single-task analyses if needed. The final dataset used for model training is **32 healthy + 16 anxiety = 48 subjects**, all with complete 4-task recordings.
+All excluded subjects' raw data remains in `data/raw/` and can be used for single-task analyses if needed. The final dataset used for model training is **32 healthy + 16 anxiety = 48 subjects**, all with complete 4-task recordings.
 
 ## Tips
 
