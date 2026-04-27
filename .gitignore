@@ -82,6 +82,7 @@ logs/
 data/raw/
 data/processed/
 data/processed-no-grid/
+data/additional-raw
 
 # ─── Jupyter runtime artifacts ───────────────────────────────────────
 .jupyter/collaboration_sessions.json
