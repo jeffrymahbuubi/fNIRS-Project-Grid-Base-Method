@@ -213,7 +213,6 @@ def main():
         Resize((128, 128)),
         RearrangeBackToCTHW(),
         ConvertToRGB(),
-        AddGaussianNoise(mean=0.0, std=0.05)
     ])
 
     val_transform = Compose([
