@@ -81,6 +81,12 @@ logs/
 # ─── Data (raw & processed datasets excluded; scripts/configs tracked) ──────
 data/raw/
 data/processed/
+data/processed-no-grid/
+
+# ─── Jupyter runtime artifacts ───────────────────────────────────────
+.jupyter/collaboration_sessions.json
+.jupyter_ystore.db
+**/.ipynb_checkpoints/
 
 # ─── AgentDB / RuFlo runtime databases ───────────────────────────────
 agentdb.rvf
