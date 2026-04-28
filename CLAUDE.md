@@ -11,6 +11,12 @@
 - ALWAYS read a file before editing it
 - NEVER commit secrets, credentials, or .env files
 
+## MCP Tool Selection Rules (Always Enforced)
+
+- ALWAYS use `mcp__jupyter-mcp-server__*` tools when working with Jupyter notebooks — reading cells, executing code, inserting/editing cells, restarting kernels. Do NOT fall back to Bash or plain file reads for notebook operations.
+- ALWAYS use `mcp__context7__resolve-library-id` followed by `mcp__context7__query-docs` when looking up documentation for any library, framework, SDK, API, or CLI tool. Do NOT rely on training data alone — training data may be outdated.
+- ALWAYS use `mcp__netmind-parse-pdf__parse_pdf` when extracting or reading content from PDF files. Do NOT use Bash text extraction tools or plain file reads as alternatives.
+
 ## File Organization
 
 - NEVER save to root folder — use the directories below
