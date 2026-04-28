@@ -1,0 +1,82 @@
+STRUCTURE SUMMARY:
+-----------------
+
+# Research Paper PowerPoint Structure
+
+## 1. Introduction
+   - Clinical and Disease Explanation ✅
+   - Traditional Anxiety Assessment Methodology ✅
+   - fNIRS compared to other modality ✅ 
+   - Literature Review of current existing research of anxiety disorder using fNRIS ✅
+   - Research Motivation and Significance ✅
+
+## 2. Materials and Methods
+   ### 2.1. Dataset Characteristics
+   - Demographic Overview ✅
+     - Descriptive Statistics (Mean, Median, Age Distribution) ✅
+     - Gender Composition ✅
+     - Participant Characteristics ✅
+
+   ### 2.2. Experimental Paradigms
+   - Placement of Sensor-Detector Sensor (frontal) ✅
+   - Channels Selection, Arrangements ✅
+   - Neurophysiological Task Protocols
+     - Signal Analysis Comparison
+       - Go/No-Go Task ✅
+       - N-Back Working Memory Task ✅
+       - Stroop Task (SS) ✅
+       - Verbal Fluency Task (VF) ✅
+
+   ### 2.3. Overall Workflow Pipeline
+   - Signal Processing Techniques ✅
+     - Filtering Strategies ✅
+     - Normalization Approaches ✅ 
+     - Hemodynamic Calculations ✅
+       - Hemoglobin Total (HbT) Derivation ✅
+     - Data Transformation ✅
+       - 1D to 2D Data Conversion ✅
+       - 2D to 3D Data Generation ✅
+
+   ### 2.4. Deep Learning Methodology
+   - Vision Transformer (ViT-3D) Architecture ✅
+     - Token Generation Approach ✅
+     - Image Patch Segmentation ✅
+     - Temporal Frame Patch Configuration ✅
+     - Hyperparameter Optimization ✅
+       - Learning Rate Scheduling ✅
+       - Optimization Algorithms ✅
+       - Model Configuration ✅
+
+   ### 2.5. Evaluation Framework
+   - Performance Metrics ✅
+   - Confusion Matrix Analysis
+   - Cross-Validation Strategies ✅
+     - K-Fold Validation
+       - 5-Fold Cross-Validation ✅
+       - 10-Fold Cross-Validation ✅
+     - Leave-One-Subject-Out (LOSO) Validation ✅
+
+## 3. Experimental Results
+   - 5-Fold Cross-Validation Outcomes ✅
+   - 10-Fold Cross-Validation Findings ✅
+   - Leave-One-Subject-Out (LOSO) Results ✅
+
+## 4. Discussion
+   - Patch Size Impact Analysis ✅
+     - Image Patch Size Implications
+     - Temporal Frame Patch Size Effects
+   - Hemodynamic Response Analysis ✅
+     - Oxyhemoglobin (HbO)
+     - Deoxyhemoglobin (HbR)
+     - Total Hemoglobin (HbT) Insights
+   - Task-Specific Performance Evaluation ✅
+     - Go/No-Go Task Performance
+     - N-Back Working Memory Performance
+     - Verbal Fluency Task Outcomes
+     - Stroop Task Results
+
+## 5. Conclusions
+   - Key Findings Summary ✅
+
+
+    

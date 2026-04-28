@@ -181,10 +181,10 @@ def main():
     setup_system(SystemConfig)
 
     num_classes = 2
-    image_size = (128, 128)
-    image_patch_size = (8, 8)
-    frames = 256
-    frame_patch_size = 16
+    image_size = (64, 64)
+    image_patch_size = (4, 4)
+    frames = 128
+    frame_patch_size = 8
     channels = 3
     dim = 64
     depth = 6
@@ -209,16 +209,16 @@ def main():
 
     train_transform = Compose([
         RearrangeToTCHW(),
-        UniformTemporalSubsample(num_samples=256),
-        Resize((128, 128)),
+        UniformTemporalSubsample(num_samples=128),
+        Resize((64, 64)),
         RearrangeBackToCTHW(),
         ConvertToRGB(),
     ])
 
     val_transform = Compose([
         RearrangeToTCHW(),
-        UniformTemporalSubsample(num_samples=256),
-        Resize((128, 128)),
+        UniformTemporalSubsample(num_samples=128),
+        Resize((64, 64)),
         RearrangeBackToCTHW(),
         ConvertToRGB()
     ])

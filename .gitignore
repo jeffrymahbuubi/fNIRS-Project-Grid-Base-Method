@@ -84,6 +84,7 @@ data/processed/
 data/processed-no-grid/
 data/additional-raw
 data/sanity-check
+data/processed-*
 
 # ─── Jupyter runtime artifacts ───────────────────────────────────────
 .jupyter/collaboration_sessions.json
