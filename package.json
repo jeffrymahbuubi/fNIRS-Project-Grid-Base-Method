@@ -13,8 +13,5 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {
-    "ruflo": "^3.5.80"
-  }
+  "type": "commonjs"
 }
