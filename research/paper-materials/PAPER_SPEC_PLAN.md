@@ -19,19 +19,21 @@
 ## 2. Key Technical Facts (Ground Truth — Reference Before Writing)
 
 ### 2.1 Dataset
+**Source:** `src/notebook/statistical-analysis/01_demographic/01_demographic_analysis.ipynb`
+
 | Parameter | Value |
 |---|---|
-| Total recruited | 53 adults (20 GAD, 33 HC) |
-| GAD after exclusions | ~16 subjects (5 excluded: AH047, AA011, EA012, EA016, LA053) |
-| HC | 33 subjects, age 73.0 ± 5.6 yrs, 70% female |
-| GAD | 20 subjects, age 52.2 ± 14.6 yrs, 75% female |
-| Age gap (confound) | Welch's t = -6.13, p = 3.3×10⁻⁶, Cohen's d ≈ 2.1 — **must be discussed as limitation** |
-| Sex balance | χ² = 0.01, p = 0.92 — balanced, not a confound |
-| HAMA (GAD only) | 23.6 ± 8.1 (moderate anxiety range ≥18) |
-| STAI-S | HC: 29.8±8.1, GAD: 46.6±9.4 (t=6.11, p=4.3×10⁻⁷) |
-| STAI-T | HC: 33.4±8.0, GAD: 59.0±8.8 (t=9.74, p<10⁻¹¹) |
-| Special case | AH029 (HC) — self-reported MDD on medication |
-| HAMA missing | LA063 — severity analysis restricted to n=15 for HAMA |
+| Total recruited | 53 adults; **48 in final analysis** after exclusions |
+| Exclusions | 5 total (1 HC + 4 GAD) — incomplete task recordings |
+| HC | **32 subjects**, age **72.7 ± 5.2** yrs (range 65–84), **72% female (23F / 9M)** |
+| GAD | **16 subjects**, age **49.5 ± 14.3** yrs (range 29–70), **81% female (13F / 3M)** |
+| Age gap (confound) | t(46) = 8.20, p = 1.50×10⁻¹⁰ — **must be discussed as limitation** |
+| Sex balance | χ²(1) = 0.13, p = 0.72 — balanced, not a confound |
+| HAMA (GAD only) | **22.0 ± 10.3** (incl. LA063=0, n=16) / **23.5 ± 8.7** (excl. LA063, n=15); range 0–40 |
+| STAI-S | HC: **29.4±8.5**, GAD: **45.8±8.7** (t(46)=−6.26, p<0.001, d=1.90) |
+| STAI-T | HC: **34.1±9.7**, GAD: **57.2±6.8** (t(46)=−8.54, p<0.001, d=2.59) |
+| Special case | AH029 (HC) — self-reported MDD, receiving psychotherapy + meds; retained (no confirmed diagnosis), interpret with caution |
+| HAMA missing | LA063 — HAMA=0 (not administered); retained based on elevated STAI-S=55, STAI-T=63 |
 
 ### 2.2 fNIRS System
 | Parameter | Value |
@@ -58,9 +60,11 @@
 | Grid mapping | 23 channels placed into **5×7 spatial grid** (H=5 rows, W=7 cols) using anatomical optode positions |
 | Sparse grid | 12 of 35 cells are empty (zero) after channel placement |
 | Interpolation | Empty cells filled via **Gaussian RBF interpolation** (`scipy.interpolate.Rbf`) |
-| Clip construction | Stack T interpolated frames → **(T, H, W)** tensor = video clip |
+| Clip construction | Stack T interpolated frames → **(T, 5, 7)** native tensor |
+| **Spatial resize** | **(T, 5, 7) → (T, H, W)** via bilinear interpolation (`torchvision.transforms.v2.Resize`) to meet ViT patch-embedding requirements. Spatial topology preserved; information content bounded by 23 channels. H/W = 32/64/128 depending on config. |
+| Temporal sampling | `UniformTemporalSubsample(T)` → T frames uniformly drawn from the native clip |
 | RGB replication | Single-channel signal replicated ×3 for 3-channel ViT input: **(3, T, H, W)** |
-| Multi-channel option | HbO/HbR/HbT as 3 independent channels (alternative to RGB) |
+| **Spatial info bound** | Effective spatial resolution is bounded by 23 discrete channel positions regardless of H/W — the resize increases token count but introduces no new measurement information |
 
 **Confirmed channel-to-grid mapping (from `processor_cli.py:get_channel_positions()`):**
 ```
@@ -270,15 +274,20 @@ This is the primary methodological contribution. Write in detail.
 ---
 
 ### Section 4: Results
-**Status: BLOCKED — awaiting final model training**
+**Status: PARTIALLY READY — §4.1 ablation (5-fold GNG-HbT) complete; §4.2–4.4 blocked pending training**
 **Placeholder structure:**
 
 #### 4.1 Ablation Study: Clip Size × Patch Size
-| Clip Size | Patch Size | 5-Fold Acc | 10-Fold Acc | LOSO Acc |
-|---|---|---|---|---|
-| (64, 32, 32) | (4, 2, 2) | TBD | TBD | TBD |
-| (128, 64, 64) | (4, 4, 4) | TBD | TBD | TBD |
-| (256, 128, 128) | (8, 8, 8) | TBD | TBD | TBD |
+**Data source:** `research/paper-materials/temporal_context_analysis.md`
+All three configs share identical token budget (4096 tokens). Task: GNG | Signal: HbT | CV: 5-fold.
+
+| Config | Clip Size (T,H,W) | Patch Size (t,h,w) | 5-Fold Acc | 5-Fold κ | 5-Fold MCC | 10-Fold Acc | LOSO Acc |
+|---|---|---|---|---|---|---|---|
+| A | (64, 32, 32) | (4, 2, 2) | 61.98% | 0.272 | 0.305 | TBD | TBD |
+| B | (128, 64, 64) | (8, 4, 4) | 72.40% | 0.409 | 0.413 | TBD | TBD |
+| **C** | **(256, 128, 128)** | **(16, 8, 8)** | **78.65%** | **0.543** | **0.549** | TBD | TBD |
+
+**Key finding:** Monotonic improvement A→B→C on all metrics. Config C recommended as primary model — full HRF coverage (~25.6 s at 10 Hz), backed by ViViT §4.2 Fig.9 frame-count ablation.
 
 #### 4.2 Hemoglobin Type Results
 - HbO vs HbR vs HbT classification comparison per task
@@ -367,16 +376,192 @@ Save results to research/paper-materials/sources/
 "Grid-Based Spatiotemporal Encoding of fNIRS Signals for GAD Classification 
 Using a 3D Vision Transformer". Follow the structure in PAPER_SPEC_PLAN.md §3 
 Section 1. Use IEEE citation style. Target 600-800 words. 
-Save to research/paper-materials/drafts/v1_introduction.tex
+Save to research/paper-materials/drafts/v1_introduction.md
 ```
 
-#### Step 3: Write Methods (by sub-section)
+#### Step 2b: Write Methods §2.1 (Participants & Dataset Characteristics)
+```
+@scientific-writing Write Section 2.1 (Participants and Dataset Characteristics)
+for an IEEE TNSRE paper on grid-based fNIRS GAD classification.
+
+Include:
+1. Recruitment: 53 enrolled; 48 in final analysis (32 HC, 16 GAD);
+   5 excluded due to incomplete task recordings (1 HC + 4 GAD)
+2. Table 1 — group comparison (source: 01_demographic_analysis.ipynb):
+   HC:  n=32, age 72.7±5.2 yrs (range 65–84), 23F/9M (72% female)
+   GAD: n=16, age 49.5±14.3 yrs (range 29–70), 13F/3M (81% female)
+3. Clinical scores:
+   HAMA: 22.0±10.3 (incl. LA063=0, n=16) / 23.5±8.7 (excl. LA063, n=15); range 0–40
+   STAI-S: HC 29.4±8.5 vs. GAD 45.8±8.7 (t(46)=−6.26, p<0.001, d=1.90)
+   STAI-T: HC 34.1±9.7 vs. GAD 57.2±6.8 (t(46)=−8.54, p<0.001, d=2.59)
+4. Age confound disclosure: t(46)=8.20, p=1.50×10⁻¹⁰ — note this is a known
+   limitation (expanded in §5 Discussion/Limitations)
+5. Sex balance: χ²(1)=0.13, p=0.72 — not a confound
+6. Special cases:
+   AH029 (HC): self-reported MDD, on psychotherapy + medication; retained (no confirmed
+   diagnosis by research team), interpret with caution — mention in footnote
+   LA063 (GAD): HAMA not administered (coded 0); retained based on elevated STAI scores
+   (STAI-S=55, STAI-T=63) — mention in footnote
+7. Ethics statement: [IRB approval number and institution — to be provided by dataset author]
+
+~300 words + Table 1. Do NOT fabricate the IRB number — leave as placeholder.
+IEEE TNSRE style.
+Save to research/paper-materials/drafts/v1_methods_participants.md
+```
+
+#### Step 2c: Write Methods §2.2 (fNIRS Data Acquisition)
+```
+@scientific-writing Write Section 2.2 (fNIRS Data Acquisition)
+for an IEEE TNSRE paper on grid-based fNIRS GAD classification.
+
+Include:
+1. System: 23 channels formed by 8 source-detector pairs; NIRx system
+2. Wavelengths: 760 nm and 850 nm dual-wavelength illumination
+3. Source-detector separation range: 2.49–4.19 cm
+4. Electrode placement: prefrontal cortex (PFC) following international 10-20 system
+5. Hemodynamic signals: HbO, HbR, HbT derived via modified Beer-Lambert Law
+6. Brief HbT selection rationale (one sentence; full justification in §3.3):
+   HbT (= HbO + HbR) captures total hemodynamic response and was statistically
+   confirmed as the most sensitive measure at S7_D6 (see Section 3.3)
+7. Reference figures: Channel Locations.tif and brain_montage_clean_high_quality.tiff
+
+~200 words. IEEE TNSRE style.
+Save to research/paper-materials/drafts/v1_methods_fnirs_system.md
+```
+
+#### Step 2d: Write Methods §2.3 (Experimental Paradigms)
+```
+@scientific-writing Write Section 2.3 (Experimental Paradigms)
+for an IEEE TNSRE paper on grid-based fNIRS GAD classification.
+
+Describe all four cognitive tasks. For each provide: purpose, cognitive demand,
+trial structure, epoch window, preparation crop, and effective trial length.
+
+1. Go/No-Go (GNG): prepotent response inhibition; 0–35 s window,
+   crop first 3 s preparation → 32 s effective trial
+2. Stop-Signal (SS): response inhibition with variable stop-signal delay;
+   0–60 s window, crop first 7 s → 53 s effective trial
+3. 1-Back Working Memory (1backWM): executive working memory / n-back;
+   0–90 s window, crop first 5 s → 85 s effective trial
+4. Verbal Fluency (VF): semantic retrieval / phonemic fluency;
+   0–60 s window, crop first 7 s → 53 s effective trial
+
+All tasks: event onset codes 3.0/4.0 used for trial detection.
+Reference figures: GNG.tif, SS.tif, 1backWM.tif, VF.tif
+(located in research/paper-materials/figure/)
+
+~350 words. IEEE TNSRE style.
+Save to research/paper-materials/drafts/v1_methods_tasks.md
+```
+
+#### Step 2e: Write Methods §2.4 (Signal Processing Pipeline)
+```
+@scientific-writing Write Section 2.4 (Signal Processing Pipeline)
+for an IEEE TNSRE paper on grid-based fNIRS GAD classification.
+
+Describe the two-stage pipeline:
+
+Stage 1 — Homer3 (MATLAB, nirs2csv_homer3.m):
+1. hmrR_Intensity2OD: raw NIRx intensity → optical density (OD)
+2. hmrR_BandpassFilt: high-pass filter HPF=0.01 Hz (order 5),
+   low-pass filter LPF=0.5 Hz (order 3)
+3. hmrR_OD2Conc: modified Beer-Lambert Law → HbO, HbR, HbT
+   Partial pathlength factor PPF=[6, 6] for wavelengths [760 nm, 850 nm]
+   Output: CSV per subject (time vector + 23-channel haemoglobin concentration)
+
+Stage 2 — Python MNE (processor_cli.py):
+4. HbT = HbO + HbR computed from loaded CSVs
+5. Annotation alignment: t_offset correction for split recording sessions
+6. Epoching per task (event codes 3.0/4.0):
+   GNG: 0–35 s, crop 3 s → 32 s; SS: 0–60 s, crop 7 s → 53 s;
+   1backWM: 0–90 s, crop 5 s → 85 s; VF: 0–60 s, crop 7 s → 53 s
+7. Channel-wise z-score normalisation (zero mean, unit variance)
+8. Grid mapping: 23 channels → 5×7 sparse grid → Gaussian RBF interpolation
+   (scipy.interpolate.Rbf, gaussian kernel) → dense frame F_t ∈ ℝ^(5×7); stack T frames → (T, 5, 7)
+9. Spatial resize: (T, 5, 7) → (T, H, W) via bilinear interpolation
+   (torchvision.transforms.v2.Resize); H/W ∈ {32, 64, 128} per ablation config
+   Rationale: native 5×7 is too small for ViT patch tokenization; topology preserved under resize
+   Limitation: spatial information bounded by 23 channel positions regardless of H/W
+10. Temporal subsampling: UniformTemporalSubsample(T_target) → T frames
+11. RGB replication: (T, H, W) → (3, T, H, W) for ViT input
+
+Reference figures: Figure 7.tif (sparse grid), Fiigure 8.tif (single frame at t),
+Figure 9.tif (dense frame after RBF), Figure 10.tif (3D clip S^(k))
+
+~400 words. IEEE TNSRE style.
+Save to research/paper-materials/drafts/v1_methods_signal_processing.md
+```
+
+#### Step 3: Write Methods §2.5 (Grid-Based Spatiotemporal Encoding)
 ```
 @scientific-writing Write Section 2.5 (Grid-Based Spatiotemporal Encoding) 
 as described in PAPER_SPEC_PLAN.md. Include: 1D→2D motivation, 5×7 grid 
 construction, 3D video tensor formation, channel mapping rationale. 
 Use the motivation paragraph from the spec. IEEE TNSRE style, ~400 words.
-Save to research/paper-materials/drafts/v1_methods_grid_encoding.tex
+Save to research/paper-materials/drafts/v1_methods_grid_encoding.md
+```
+
+#### Step 3b: Write Methods §2.6 (3D Vision Transformer Architecture)
+```
+@scientific-writing Write Section 2.6 (3D Vision Transformer Architecture)
+for an IEEE TNSRE paper on grid-based fNIRS GAD classification.
+
+Architecture is ViViT-based (Arnab et al. 2021, arXiv:2103.15691v2) with tubelet embedding.
+Primary configuration is Config C (selected from §4.1 ablation).
+
+Include:
+1. Input tensor: (3, T, H, W) = (3, 256, 128, 128) for Config C
+2. Tubelet embedding (ViViT §3.2): non-overlapping 3D patches of size (t=16, h=8, w=8)
+   each patch flattened and linearly projected to embedding dimension d
+3. Token count: N = (256/16) × (128/8) × (128/8) = 16 × 16 × 16 = 4096 tokens
+4. Positional encoding: learnable 3D positional embeddings added to all tokens
+5. Classification token (CLS): prepended to the token sequence
+6. Transformer encoder: L stacked blocks each with multi-head self-attention (8 heads),
+   feed-forward MLP, residual connections, LayerNorm
+   (exact depth L TBD; to be updated from final ablation)
+7. Classification head: MLP applied to CLS token output → 2 classes (HC=0, GAD=1), softmax
+8. Config C selection rationale (one sentence): Config C achieves monotonically best
+   performance (Acc=78.65%, κ=0.543) and captures the full hemodynamic response
+   function (~25.6 s at 10 Hz); see §4.1 for full ablation results.
+
+Cite: Arnab et al. (2021) ViViT (arXiv:2103.15691); Dosovitskiy et al. (2021) ViT.
+Reference figures: Picture1.tif (overall workflow), ViT_Architecture_1.tif,
+ViT_Architecture_2.tif, ViT_Architecture_3.tif
+
+~350 words. IEEE TNSRE style.
+Save to research/paper-materials/drafts/v1_methods_vit_architecture.md
+```
+
+#### Step 3c: Write Methods §2.7 (Evaluation Framework)
+```
+@scientific-writing Write Section 2.7 (Evaluation Framework)
+for an IEEE TNSRE paper on grid-based fNIRS GAD classification.
+
+Include:
+1. Three cross-validation strategies (all subject-level stratified):
+   - 5-Fold CV: 5 stratified folds; used for hyperparameter/configuration comparison
+   - 10-Fold CV: 10 stratified folds; more stable performance estimates
+   - Leave-One-Subject-Out (LOSO): each subject held out once as the test set;
+     n=48 iterations (one per subject: 32 HC + 16 GAD);
+     strongest evidence for generalisation to unseen subjects
+2. Rationale: multiple strategies provide complementary evidence — 5-fold for
+   ablation speed, 10-fold for reporting stability, LOSO for clinical generalisability
+3. Metrics reported (mean ± SD with 95% CI across folds):
+   - Accuracy (Acc): overall correct classification rate
+   - Sensitivity (Sens / Recall): TP/(TP+FN) — ability to detect GAD
+   - Specificity (Spec): TN/(TN+FP) — ability to identify HC
+   - Precision (Prec / PPV): TP/(TP+FP)
+   - F1-Score: harmonic mean of Precision and Sensitivity
+   - Balanced Accuracy (BA): (Sens+Spec)/2 — robust to class imbalance
+   - Negative Predictive Value (NPV): TN/(TN+FN)
+   - Cohen's Kappa (κ): beyond-chance agreement
+   - Matthews Correlation Coefficient (MCC): robust to imbalanced classes, range [−1,1]
+   Note: AUC not reported — model outputs binary predictions; probability scores
+   not stored in current training pipeline.
+4. Per-fold metrics tabulated; overall from pooled confusion matrix across all folds
+
+~250 words. IEEE TNSRE style.
+Save to research/paper-materials/drafts/v1_methods_evaluation.md
 ```
 
 #### Step 4: Write Statistical Analysis Section
@@ -385,6 +570,110 @@ Save to research/paper-materials/drafts/v1_methods_grid_encoding.tex
 data from PAPER_SPEC_PLAN.md §3 Statistical Analysis. Include NB02, NB03, 
 NB04 findings with exact statistics. Do not add citations for these — 
 they are our own results. ~500 words. IEEE TNSRE style.
+Save to research/paper-materials/drafts/v1_statistical_analysis.md
+```
+
+#### Step 4b: Write Section 4.1 Ablation Study (Clip Size × Patch Size)
+```
+@scientific-writing Write Section 4.1 (Ablation Study: Clip Size × Patch Size) for 
+an IEEE TNSRE paper on grid-based fNIRS GAD classification.
+
+Data source: research/paper-materials/temporal_context_analysis.md
+
+Content to cover:
+1. Experimental design — three configs (A/B/C) with fixed 4096-token budget; 
+   independent variable is temporal coverage (T=64/128/256); GNG task, HbT signal, 5-fold CV.
+2. Results table — report all nine metrics (Acc, BA, Prec, Sens, Spec, NPV, F1, MCC, κ) 
+   for all three configs. Highlight Config C as best on all metrics.
+3. Key finding — monotonic improvement A→B→C: +16.67 pp accuracy, κ 0.272→0.543, 
+   MCC 0.305→0.549. Sensitivity stable (0.781) while specificity gains +25.0 pp.
+4. Mechanistic justification — longer temporal receptive field captures full hemodynamic 
+   response function (~25.6 s for Config C vs. 6.4 s for Config A at 10 Hz sampling).
+   Cite ViViT (Arnab et al. 2021, arXiv:2103.15691v2) §4.2 Fig.9 for architectural backing.
+5. Note — 10-fold and LOSO results for Config C are pending and will be reported in the 
+   final version.
+
+IEEE TNSRE style. ~350 words. Include results table from the data source.
+Save to research/paper-materials/drafts/v1_results_ablation.md
+```
+
+#### Step 4c: Write Discussion §5
+```
+@scientific-writing Write Section 5 (Discussion) for an IEEE TNSRE paper
+on grid-based fNIRS GAD classification. Target ~900 words.
+
+Write the following sub-sections IN ORDER:
+
+1. Grid encoding as spatiotemporal representation (~200 words):
+   - Why topology-preserving 5×7 grid matters over flattened feature vectors
+   - Spatial co-activation patterns + temporal HRF dynamics jointly captured
+   - ViT global self-attention models all spatio-temporal pairwise interactions
+     from layer 1 (unlike CNNs with limited receptive field) — cite ViViT §1
+
+2. HbT as primary hemodynamic measure (~150 words):
+   - Global Friedman χ²(2)=0.61, p=0.74: no global Hb-type difference
+   - S7_D6 spotlight: HbT p=0.026 d=0.64 (significant); HbO p=0.086,
+     HbR p=0.071 (both non-significant)
+   - HbT = total hemodynamic response = most sensitive to combined vascular changes
+   - Aligns with HbR ≈ chance performance in classification experiments
+
+3. GNG task dominance (~200 words):
+   - GNG is best classifier but univariate S7_D6 amplitude for GNG (d=0.644) is
+     LOWER than 1backWM (d=0.832) — not explained by simple amplitude differences
+   - Hypothesis: spatiotemporal dynamics of GNG inhibition better captured by 3D ViT
+     than raw amplitude; GNG may elicit more consistent prefrontal activation patterns
+   - NOTE: write as hypothesis only — attention map visualisation is pending (future work);
+     do NOT state this as confirmed
+
+4. Configuration C and temporal context (~150 words):
+   - Config C (T=256) outperforms A and B on all metrics in ablation (§4.1)
+   - Captures full HRF (~25.6 s) vs Config A only rise phase (~6.4 s)
+   - ViViT Fig.9: more frames → higher accuracy (same principle demonstrated here)
+   - Compute-accuracy tradeoff noted: Config C uses larger spatial dimensions (128×128)
+
+5. Comparison with prior art (~100 words):
+   - Compare against Wang 2025, Shao 2024, Ma 2020 (values from literature table)
+   - Advantage: end-to-end spatiotemporal learning, no hand-crafted features,
+     topology-preserving encoding
+
+6. Limitations (~200 words):
+   - Age confound: HC (72.7±5.2 yrs) vs. GAD (49.5±14.3 yrs), t(46)=8.20, p<0.001 —
+     cannot fully rule out hemodynamic aging effects on PFC activation
+   - Small GAD sample (n=16): limits FDR power; no severity correlation survives correction
+   - Spatial resolution bound: effective spatial resolution is bounded by 23 discrete fNIRS
+     channel positions; bilinear resize to H×W increases ViT token count but introduces
+     no additional measurement information beyond the original optode arrangement
+   - No attention map visualisation yet (pending ViT forward-hook implementation)
+   - Single prefrontal region — no full-head coverage; other regions may be relevant
+
+IMPORTANT: Do NOT fill in final classification performance numbers — use [XX.X%]
+placeholder wherever final results are needed.
+IEEE TNSRE style.
+Save to research/paper-materials/drafts/v1_discussion.md
+```
+
+#### Step 4d: Write Conclusion §6
+```
+@scientific-writing Write Section 6 (Conclusion) for an IEEE TNSRE paper
+on grid-based fNIRS GAD classification. Target ~200 words (TNSRE conclusions are concise).
+
+Include in order:
+1. Core contribution restatement: novel 1D→2D→3D grid-based encoding pipeline
+   that preserves optode spatial topology; video-like tensor enables 3D ViT for fNIRS
+2. Statistical justification: HbT confirmed as primary measure (S7_D6: p=0.026, d=0.64)
+3. Task finding: GNG task yields best classification performance across evaluation strategies
+4. Architecture finding: Config C (T=256, patches (16,8,8)) confirmed as optimal from
+   ablation — captures full hemodynamic response function
+5. Final performance: LOSO accuracy [XX.X%], sensitivity [XX.X%]
+   — leave as placeholder, to be filled after LOSO experiment completes
+6. Clinical implication: portable, objective fNIRS-based screening tool for GAD;
+   complements self-report instruments (GAD-7, STAI)
+7. Future work (2–3 items): age-matched cohort; ViT attention map visualisation;
+   multi-region fNIRS coverage beyond prefrontal cortex
+
+Do NOT invent final numbers. Use [XX.X%] for any result still pending.
+IEEE TNSRE style.
+Save to research/paper-materials/drafts/v1_conclusion.md
 ```
 
 #### Step 5: Citation Management
@@ -418,7 +707,8 @@ statistical rigor, figure quality, and IEEE TNSRE scope alignment.
 | Item | Blocked by | When to unblock |
 |---|---|---|
 | Abstract | Final classification results | After model training complete |
-| Section 4.1 Ablation table | Clip/patch experiments | After ablation runs finish |
+| Section 4.1 Ablation table (5-fold) | ✅ UNBLOCKED — data in temporal_context_analysis.md | Use Step 4b prompt to write |
+| Section 4.1 10-fold + LOSO columns | Remaining experiments | After pending runs complete |
 | Section 4.2 Hb type results | Model training | After training |
 | Section 4.3 Task comparison table | Model training | After training |
 | Section 4.4 t-SNE | Final model + embed.py | After training |
