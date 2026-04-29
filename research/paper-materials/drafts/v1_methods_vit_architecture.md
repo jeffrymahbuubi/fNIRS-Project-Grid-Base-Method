@@ -14,7 +14,9 @@ The proposed classifier is a 3D Vision Transformer (ViT) adapted from the Video 
 
 **Token sequence and positional encoding.** A learnable classification token (CLS) was prepended to the *N*-element token sequence, resulting in a sequence of length *N* + 1 = 4097. Learnable 3D positional embeddings of dimension *d* were added to all tokens (including the CLS token) to encode spatiotemporal position information, following standard ViT practice [REF-ViT].
 
-**Transformer encoder and classification head.** The token sequence was passed through a stack of *L* transformer encoder blocks (exact depth *L* to be finalised from the ablation study). Each block comprised multi-head self-attention with 8 attention heads, a position-wise feed-forward MLP, residual connections, and Layer Normalisation applied before each sub-layer (pre-norm convention). The output representation at the CLS token position was extracted from the final encoder block and passed to a two-layer MLP classification head, which produced logits over two output classes (HC = 0, GAD = 1) followed by a softmax activation.
+**Transformer encoder and classification head.** The token sequence was processed by a stack of **L = 6** transformer encoder blocks (confirmed in `src/core/main.py`). Each block comprised multi-head self-attention with **8 attention heads** and a per-head dimension of **dim_head = 64** (yielding an inner Q/K/V projection dimension of 512), a position-wise feed-forward MLP with a hidden dimension of **512** and GELU activation, residual connections, and Layer Normalisation applied before each sub-layer (pre-norm convention). The embedding dimension throughout was **d = 64**. The output representation at the CLS token position was extracted from the final encoder block and passed to a two-layer MLP classification head (LayerNorm → Linear), producing logits over two output classes (HC = 0, GAD = 1).
+
+**Training configuration.** The model was optimised using the Adam optimiser [REF-Adam] with β₁ = 0.9, β₂ = 0.999, and an initial learning rate of 1 × 10⁻³. A cosine warm-up scheduler was applied: the learning rate increased linearly from zero over the first 10 epochs and subsequently decayed following a cosine schedule over the remaining training epochs. The model was trained for a fixed budget of 100 epochs with a batch size of 8. Throughout training, model weights corresponding to the epoch achieving the highest validation F1-score were tracked and restored upon completion, ensuring the best-generalising checkpoint was used for evaluation. The loss function was cross-entropy without label smoothing (default configuration). All experiments were conducted under a fixed random seed (seed = 42) with deterministic CUDA operations to ensure reproducibility. No data augmentation was applied during training in the default pipeline. The complete architecture and training configuration is summarised in Table [X].
 
 ---
 
@@ -29,16 +31,36 @@ The proposed classifier is a 3D Vision Transformer (ViT) adapted from the Video 
 
 *Note: Fig. 11–14 numbering is a placeholder pending final figure ordering.*
 
-### Configuration Summary (Config C)
+### Table [X]: Model Architecture and Training Configuration (Config C)
+
+*Note: Table number [X] is a placeholder — assign final number during manuscript assembly.*
+
+**Architecture**
 
 | Parameter | Value |
 |---|---|
-| Input tensor | (3, 256, 128, 128) |
-| Patch size (*t*, *h*, *w*) | (16, 8, 8) |
-| Token count *N* | 4096 |
+| Input (*C*, *T*, *H*, *W*) | (3, 256, 128, 128) |
+| Tubelet size (*t*, *h*, *w*) | (16, 8, 8) |
+| Token count *N* | 4,096 |
+| Embedding dim *d* | 64 |
 | Attention heads | 8 |
-| Encoder depth *L* | TBD (from final ablation) |
-| Classes | 2 (HC = 0, GAD = 1) |
+| dim_head (per head) | 64 |
+| MLP hidden dim | 512 |
+| Encoder depth *L* | 6 |
+| Output classes | 2 (HC = 0, GAD = 1) |
+
+**Training**
+
+| Parameter | Value |
+|---|---|
+| Optimizer | Adam (β₁ = 0.9, β₂ = 0.999) |
+| Initial learning rate | 1 × 10⁻³ |
+| LR schedule | Cosine warm-up (10 ep) → cosine decay |
+| Epochs | 100 |
+| Batch size | 8 |
+| Loss function | Cross-entropy (label smoothing = 0) |
+| Model selection | Best validation F1 checkpoint |
+| Random seed | 42 |
 
 ### Citation Placeholders
 

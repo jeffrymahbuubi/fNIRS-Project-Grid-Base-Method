@@ -1,6 +1,6 @@
 # Paper Specification & Writing Plan
 **fNIRS Grid-Based Method — IEEE TNSRE Submission**
-**Last updated: 2026-04-28**
+**Last updated: 2026-04-29**
 
 ---
 
@@ -49,7 +49,7 @@
 | Task | Code | Role in paper |
 |---|---|---|
 | Go/No-Go | GNG | **Best classifier** (LOSO 97.6%, sensitivity 100%) |
-| Stop-Signal | SS | Secondary |
+| Serial Subtraction | SS | Secondary |
 | 1-Back Working Memory | 1backWM | Secondary (highest Cohen's d at S7_D6: d=0.832) |
 | Verbal Fluency | VF | Secondary |
 
@@ -95,16 +95,22 @@ Row 4: ·   S6D6 S7D6 S7D7 S8D7 S8D8  ·
 ### 2.5 Model Architecture (ViT 3D)
 | Parameter | Experimental Values Being Tested |
 |---|---|
-| **Clip size** (T, H, W) | (64, 32, 32) / (128, 64, 64) / (256, 128, 128) |
-| **Patch size** (t, h, w) | (4, 2, 2) / others under experimentation |
-| Spatial patch | 4×4 |
-| Temporal frame patch | 8 frames |
-| Depth | Transformer layers (exact depth TBD) |
-| Heads | 8 |
-| Channels | 3 (RGB-replicated or HbO+HbR+HbT) |
+| **Clip size** (T, H, W) | **(256, 128, 128)** — Config C (confirmed default in `main.py`) |
+| **Patch size** (t, h, w) | **(16, 8, 8)** — tubelet size for Config C |
+| Spatial patch | 8×8 |
+| Temporal frame patch | 16 frames |
+| Depth L | **6** transformer encoder layers (confirmed `main.py:191`) |
+| Heads | **8** |
+| Embedding dim d | **64** (confirmed `main.py:189`) |
+| dim_head | **64** (per-head dimension, `models.py:25`) |
+| MLP hidden dim | **512** (8× expansion, confirmed `main.py:192`) |
+| Channels | 3 (single-channel HbT replicated ×3 via `ConvertToRGB`) |
 | Pool | CLS token |
 | Classes | 2 (HC=0, GAD=1) |
-| Note | Configuration space being ablated — final config pending |
+| Loss | CrossEntropyLoss (label_smoothing=0.0 default; optional class weights) |
+| Training budget | 100 epochs fixed; **best val F1 checkpoint restored** at end (patience=100 = epoch budget → stopping criterion never fires) |
+| Augmentation | **None** in default pipeline (`AddGaussianNoise` class exists but unused) |
+| Weight init | Xavier uniform (Linear layers), constant 1.0/0.0 (LayerNorm) |
 
 ### 2.6 Evaluation Strategies
 - 5-Fold Cross-Validation (subject-level stratified)
@@ -182,7 +188,7 @@ Sub-sections to cover (in order):
 - Figure: Channel Locations.tif + brain_montage_clean_high_quality.tiff
 
 #### 2.3 Experimental Paradigms
-- Go/No-Go (GNG), Stop-Signal (SS), 1-Back Working Memory, Verbal Fluency
+- Go/No-Go (GNG), Serial Subtraction (SS), 1-Back Working Memory, Verbal Fluency
 - Brief description of each task; reference figures GNG.tif, SS.tif, 1backWM.tif, VF.tif
 - Trial structure (timing, stimulus, response)
 
@@ -336,7 +342,7 @@ Sub-sections:
 | `Channel Locations.tif` | fNIRS optode placement diagram | Methods §2.2 |
 | `brain_montage_clean_high_quality.tiff` | Brain montage with channel overlay | Methods §2.2 |
 | `GNG.tif` | Go/No-Go task paradigm | Methods §2.3 |
-| `SS.tif` | Stop-Signal task paradigm | Methods §2.3 |
+| `SS.tif` | Serial Subtraction task paradigm | Methods §2.3 |
 | `1backWM.tif` | 1-Back Working Memory paradigm | Methods §2.3 |
 | `VF.tif` | Verbal Fluency task paradigm | Methods §2.3 |
 | `Figure 7.tif` | **2D Haemoglobin Concentration 5×7 sparse matrix** | Methods §2.5 (grid encoding step 1) |
@@ -372,10 +378,10 @@ Save results to research/paper-materials/sources/
 
 #### Step 2: Write Introduction
 ```
-@scientific-writing Write the Introduction for an IEEE TNSRE paper titled 
-"Grid-Based Spatiotemporal Encoding of fNIRS Signals for GAD Classification 
-Using a 3D Vision Transformer". Follow the structure in PAPER_SPEC_PLAN.md §3 
-Section 1. Use IEEE citation style. Target 600-800 words. 
+@scientific-writing Write the Introduction for an IEEE TNSRE paper titled
+"Grid-Based Spatiotemporal Encoding of fNIRS Signals for GAD Classification
+Using a 3D Vision Transformer". Follow the structure in PAPER_SPEC_PLAN.md §3
+Section 1. Use IEEE citation style. Target 600-800 words.
 Save to research/paper-materials/drafts/v1_introduction.md
 ```
 
@@ -439,8 +445,11 @@ trial structure, epoch window, preparation crop, and effective trial length.
 
 1. Go/No-Go (GNG): prepotent response inhibition; 0–35 s window,
    crop first 3 s preparation → 32 s effective trial
-2. Stop-Signal (SS): response inhibition with variable stop-signal delay;
-   0–60 s window, crop first 7 s → 53 s effective trial
+2. Serial Subtraction (SS): vocal mental arithmetic; participants are shown an equation
+   (e.g., "500 – 7") during a 7-s preparation period, then subtract the decrement repeatedly
+   aloud for 60 s (e.g., 500 → 493 → 486 → …); 4 trials with different starting values and
+   decrements (500-7, 950-17, 800-13, 650-8); 0–60 s window,
+   crop first 7 s preparation → 53 s effective trial
 3. 1-Back Working Memory (1backWM): executive working memory / n-back;
    0–90 s window, crop first 5 s → 85 s effective trial
 4. Verbal Fluency (VF): semantic retrieval / phonemic fluency;
@@ -494,9 +503,9 @@ Save to research/paper-materials/drafts/v1_methods_signal_processing.md
 
 #### Step 3: Write Methods §2.5 (Grid-Based Spatiotemporal Encoding)
 ```
-@scientific-writing Write Section 2.5 (Grid-Based Spatiotemporal Encoding) 
-as described in PAPER_SPEC_PLAN.md. Include: 1D→2D motivation, 5×7 grid 
-construction, 3D video tensor formation, channel mapping rationale. 
+@scientific-writing Write Section 2.5 (Grid-Based Spatiotemporal Encoding)
+as described in PAPER_SPEC_PLAN.md. Include: 1D→2D motivation, 5×7 grid
+construction, 3D video tensor formation, channel mapping rationale.
 Use the motivation paragraph from the spec. IEEE TNSRE style, ~400 words.
 Save to research/paper-materials/drafts/v1_methods_grid_encoding.md
 ```
@@ -516,13 +525,21 @@ Include:
 3. Token count: N = (256/16) × (128/8) × (128/8) = 16 × 16 × 16 = 4096 tokens
 4. Positional encoding: learnable 3D positional embeddings added to all tokens
 5. Classification token (CLS): prepended to the token sequence
-6. Transformer encoder: L stacked blocks each with multi-head self-attention (8 heads),
-   feed-forward MLP, residual connections, LayerNorm
-   (exact depth L TBD; to be updated from final ablation)
-7. Classification head: MLP applied to CLS token output → 2 classes (HC=0, GAD=1), softmax
+6. Transformer encoder: **L=6** stacked blocks each with multi-head self-attention
+   (**8 heads**, dim_head=64; inner_dim=512), feed-forward MLP (**hidden_dim=512**, GELU
+   activation), residual connections, pre-norm LayerNorm (pre-attention and pre-FFN)
+7. Classification head: MLP (LayerNorm → Linear) applied to CLS token → 2 classes (HC=0, GAD=1)
 8. Config C selection rationale (one sentence): Config C achieves monotonically best
    performance (Acc=78.65%, κ=0.543) and captures the full hemodynamic response
    function (~25.6 s at 10 Hz); see §4.1 for full ablation results.
+9. Training configuration (confirmed from `src/core/main.py`):
+   - Optimizer: Adam (β₁=0.9, β₂=0.999), initial LR=1×10⁻³
+   - Scheduler: CosineWarmupScheduler — 10-epoch linear warmup, then cosine decay over 100 epochs
+   - Loss: CrossEntropyLoss (label_smoothing=0.0; optional sqrt class-weighting available)
+   - Early stopping: patience=25 epochs, monitored on **val F1**; best model weights restored
+   - Batch size: 8 | Epochs: 100 | Random seed: 42 (fully deterministic)
+   - Weight init: Xavier uniform (Linear), constant 1.0/0.0 (LayerNorm) — `initialize_weights()`
+   - Augmentation: **none** (AddGaussianNoise exists in `datasets.py` but not in default transform)
 
 Cite: Arnab et al. (2021) ViViT (arXiv:2103.15691); Dosovitskiy et al. (2021) ViT.
 Reference figures: Picture1.tif (overall workflow), ViT_Architecture_1.tif,
@@ -566,31 +583,31 @@ Save to research/paper-materials/drafts/v1_methods_evaluation.md
 
 #### Step 4: Write Statistical Analysis Section
 ```
-@scientific-writing Write Section 3 (Statistical Analysis) using the 
-data from PAPER_SPEC_PLAN.md §3 Statistical Analysis. Include NB02, NB03, 
-NB04 findings with exact statistics. Do not add citations for these — 
+@scientific-writing Write Section 3 (Statistical Analysis) using the
+data from PAPER_SPEC_PLAN.md §3 Statistical Analysis. Include NB02, NB03,
+NB04 findings with exact statistics. Do not add citations for these —
 they are our own results. ~500 words. IEEE TNSRE style.
 Save to research/paper-materials/drafts/v1_statistical_analysis.md
 ```
 
 #### Step 4b: Write Section 4.1 Ablation Study (Clip Size × Patch Size)
 ```
-@scientific-writing Write Section 4.1 (Ablation Study: Clip Size × Patch Size) for 
+@scientific-writing Write Section 4.1 (Ablation Study: Clip Size × Patch Size) for
 an IEEE TNSRE paper on grid-based fNIRS GAD classification.
 
 Data source: research/paper-materials/temporal_context_analysis.md
 
 Content to cover:
-1. Experimental design — three configs (A/B/C) with fixed 4096-token budget; 
+1. Experimental design — three configs (A/B/C) with fixed 4096-token budget;
    independent variable is temporal coverage (T=64/128/256); GNG task, HbT signal, 5-fold CV.
-2. Results table — report all nine metrics (Acc, BA, Prec, Sens, Spec, NPV, F1, MCC, κ) 
+2. Results table — report all nine metrics (Acc, BA, Prec, Sens, Spec, NPV, F1, MCC, κ)
    for all three configs. Highlight Config C as best on all metrics.
-3. Key finding — monotonic improvement A→B→C: +16.67 pp accuracy, κ 0.272→0.543, 
+3. Key finding — monotonic improvement A→B→C: +16.67 pp accuracy, κ 0.272→0.543,
    MCC 0.305→0.549. Sensitivity stable (0.781) while specificity gains +25.0 pp.
-4. Mechanistic justification — longer temporal receptive field captures full hemodynamic 
+4. Mechanistic justification — longer temporal receptive field captures full hemodynamic
    response function (~25.6 s for Config C vs. 6.4 s for Config A at 10 Hz sampling).
    Cite ViViT (Arnab et al. 2021, arXiv:2103.15691v2) §4.2 Fig.9 for architectural backing.
-5. Note — 10-fold and LOSO results for Config C are pending and will be reported in the 
+5. Note — 10-fold and LOSO results for Config C are pending and will be reported in the
    final version.
 
 IEEE TNSRE style. ~350 words. Include results table from the data source.
@@ -688,15 +705,15 @@ Save to research/paper-materials/references/references.bib
 
 #### Step 6: IEEE Template Setup
 ```
-@venue-templates Get IEEE TNSRE LaTeX template requirements and formatting 
-guidelines. Set up the main .tex file skeleton at 
+@venue-templates Get IEEE TNSRE LaTeX template requirements and formatting
+guidelines. Set up the main .tex file skeleton at
 research/paper-materials/drafts/main.tex
 ```
 
 #### Step 7: Peer Review (after full draft)
 ```
 @peer-review Evaluate the draft manuscript at research/paper-materials/drafts/
-using ScholarEval 8-dimension scoring. Focus on: methodology clarity, 
+using ScholarEval 8-dimension scoring. Focus on: methodology clarity,
 statistical rigor, figure quality, and IEEE TNSRE scope alignment.
 ```
 

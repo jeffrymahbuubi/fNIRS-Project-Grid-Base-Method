@@ -12,7 +12,7 @@ Four cognitive paradigms were administered to probe distinct dimensions of prefr
 
 The **Go/No-Go (GNG)** task required participants to execute a speeded motor response to frequent "Go" stimuli while suppressing their prepotent response to infrequent "No-Go" stimuli, placing demands on inhibitory control and sustained attention [REF]. Epochs were extracted over a 0–35 s window relative to onset; the first 3 s were removed as the preparation interval, yielding an effective trial duration of 32 s (Fig. 3).
 
-The **Stop-Signal (SS)** task probed reactive response inhibition by requiring participants to suppress an already-initiated motor response when an unpredictable stop signal appeared after a variable stop-signal delay [REF]. The stochastic delay structure imposes a greater cognitive demand on inhibitory control relative to the GNG paradigm. Epochs spanned 0–60 s from onset; the first 7 s were discarded, leaving an effective duration of 53 s (Fig. 4).
+The **Serial Subtraction (SS)** task engaged sustained executive arithmetic by requiring participants to subtract a fixed numerical decrement aloud and continuously over an extended active phase [REF]. Each trial began with a 7-s preparation period during which a target equation was displayed on screen (e.g., "500 − 7"); participants then vocally subtracted the stated decrement as rapidly and accurately as possible for 60 s (e.g., 500, 493, 486, …). Four trials were administered per session, each using a different starting value and decrement (500 − 7, 950 − 17, 800 − 13, 650 − 8) to prevent carry-over effects. Epochs were extracted over a 0–60 s window from task onset; the initial 7 s preparation interval was excluded, yielding an effective trial duration of 53 s (Fig. 4).
 
 The **1-Back Working Memory (1backWM)** task required participants to judge whether each stimulus matched the one presented one trial previously, continuously engaging executive attention, stimulus updating, and short-term memory maintenance [REF]. Given the sustained nature of working memory engagement, epochs were extracted over a 0–90 s window with the first 5 s excluded, yielding an effective duration of 85 s — the longest among the four paradigms (Fig. 5).
 
@@ -25,7 +25,7 @@ The **Verbal Fluency (VF)** task required participants to generate words belongi
 | Task | Raw Window (s) | Preparation Crop (s) | Effective Duration (s) | Event Codes |
 |---|---|---|---|---|
 | Go/No-Go (GNG) | 0–35 | 3 | **32** | 3.0 / 4.0 |
-| Stop-Signal (SS) | 0–60 | 7 | **53** | 3.0 / 4.0 |
+| Serial Subtraction (SS) | 0–60 | 7 | **53** | 3.0 / 4.0 |
 | 1-Back Working Memory (1backWM) | 0–90 | 5 | **85** | 3.0 / 4.0 |
 | Verbal Fluency (VF) | 0–60 | 7 | **53** | 3.0 / 4.0 |
 
@@ -34,7 +34,7 @@ The **Verbal Fluency (VF)** task required participants to generate words belongi
 | Placeholder | File | Content |
 |---|---|---|
 | Fig. 3 | `GNG.tif` | Go/No-Go task paradigm diagram |
-| Fig. 4 | `SS.tif` | Stop-Signal task paradigm diagram |
+| Fig. 4 | `SS.tif` | Serial Subtraction task paradigm diagram |
 | Fig. 5 | `1backWM.tif` | 1-Back Working Memory paradigm diagram |
 | Fig. 6 | `VF.tif` | Verbal Fluency paradigm diagram |
 
@@ -45,6 +45,6 @@ The **Verbal Fluency (VF)** task required participants to generate words belongi
 | Tag | Description |
 |---|---|
 | [REF] after GNG | Standard GNG citation — e.g., Aron & Poldrack 2006, or a task-validation reference used by dataset author |
-| [REF] after SS | Standard Stop-Signal citation — e.g., Logan et al. 1984 / Verbruggen & Logan 2008 |
+| [REF] after SS | Serial Subtraction / mental arithmetic citation — e.g., Kirschbaum et al. 1993 (TSST), or a relevant fNIRS serial subtraction reference |
 | [REF] after 1backWM | n-back / 1-back WM citation — e.g., Owen et al. 2005 or Jaeggi et al. 2010 |
 | [REF] after VF | Verbal Fluency citation — e.g., Benton & Hamsher 1976, or Troyer et al. 1997 |
