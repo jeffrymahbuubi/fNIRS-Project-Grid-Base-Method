@@ -100,3 +100,9 @@ ruvector.db
 references
 research/experiments
 .swarm/
+
+# ─── Test cache ──────────────────────────────────────────────────────────────
+.pytest_cache/
+
+# ─── Images ──────────────────────────────────────────────────────────────────
+img/
