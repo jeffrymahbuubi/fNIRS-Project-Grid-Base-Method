@@ -1,0 +1,14 @@
+# Core ML / scientific stack
+# PyTorch must be installed separately — see README for the correct index URL
+einops==0.8.2
+imbalanced-learn==0.14.1
+matplotlib==3.10.8
+mne==1.12.0
+numpy==2.4.3
+pandas==3.0.2
+PyYAML==6.0.3
+scikit-learn==1.8.0
+scipy==1.17.1
+statsmodels==0.14.6
+torchmetrics==1.9.0
+tqdm==4.67.3
