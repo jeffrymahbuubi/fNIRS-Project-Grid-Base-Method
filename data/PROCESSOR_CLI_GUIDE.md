@@ -386,6 +386,48 @@ Subjects recruited under the standard protocol but with one or more tasks missin
 
 All excluded subjects' raw data remains in `data/raw/` and can be used for single-task analyses if needed. The final dataset used for model training is **32 healthy + 16 anxiety = 48 subjects**, all with complete 4-task recordings.
 
+## Baseline Correction — Known Limitation and Design Rationale
+
+### Background
+
+The `--apply-baseline` flag activates `_baseline_correction()` in `processor_cli.py`. This method applies a **global baseline correction** using a single resting-state reference window that is subtracted from all task epochs.
+
+### Why global correction instead of per-epoch pre-stimulus correction?
+
+The ideal approach in fNIRS (following Homer3 best practices) is **per-epoch pre-stimulus baseline correction**: for each individual stimulus epoch, subtract the mean signal from the pre-stimulus rest window (e.g., −5 to 0 s before stimulus onset). This removes slow drift independently for each trial.
+
+However, this dataset has **short inter-stimulus rest windows** that make per-epoch correction impractical:
+
+| Task | Pre-stimulus rest | Feasible for per-epoch correction? |
+|------|-------------------|------------------------------------|
+| GNG | ~3 s | No — too short for stable estimate |
+| 1backWM | ~5 s | No — marginally too short |
+| VF | ~7 s | Borderline |
+| SS | ~7 s | Borderline |
+
+The minimum recommended pre-stimulus baseline window is **≥ 30 s** (Homer3 best practices). With 3–7 s windows, per-epoch estimates would be dominated by noise rather than stable resting state.
+
+### Current workaround
+
+The initial recording block contains a **120-second resting-state period** (annotation `1.0`). Immediately following this, a 30-second `Rest` window (annotation `99.0`) is inserted by `modify_annotations()`. The `_baseline_correction()` method computes the mean signal during this window and subtracts it globally from all subsequent task epochs.
+
+> **Implementation note:** The current code uses only the first **5 seconds** of the 30-second Rest window (`epochs.times <= 5`). Extending this to the full 30 seconds (`epochs.times <= 30`) would better match the design intent and is a candidate for a future minor update. The global correction design itself is the correct approach for this dataset.
+
+### Methodological note for publication
+
+When reporting results, state explicitly:
+
+> *"Baseline correction was performed globally using the mean signal from a 30-second resting period at the start of each recording session. Per-epoch pre-stimulus baseline correction was not applied due to the short inter-stimulus intervals (3–7 s) characteristic of the task designs used in this study."*
+
+This is a common and accepted approach in fNIRS literature when task designs do not allow extended pre-stimulus rest.
+
+### Recommendation
+
+- **`--apply-baseline` should be enabled** for all processing runs (it is not on by default — use explicitly).
+- **`--apply-zscore` should also be enabled** alongside baseline correction; z-score normalization compensates for residual scale differences between subjects.
+
+---
+
 ## Tips
 
 1. **Start with single mode** to test parameters on one subject before batch processing
