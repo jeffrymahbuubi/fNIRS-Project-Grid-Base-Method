@@ -66,4 +66,4 @@ as the primary signal type for all subsequent analyses reported in Section IV-C.
 - TABLE III numbering is a placeholder; renumber sequentially in the assembled manuscript (follows TABLE I and TABLE II in §4.1).
 - "Section IV-C" cross-reference assumes the task comparison subsection is lettered C in Part IV; adjust if subsection lettering changes.
 - The Section III-C cross-reference for p = 0.071 (S7_D6 HbR) should point to the statistical analysis subsection in Methods/Results; confirm label in final assembly.
-- LOSO results for Hb comparison are not included here; if collected, add a parallel LOSO row or separate column to TABLE III before submission.
+- LOSO cross-validation was not run for HbO or HbR conditions — only the best-performing signal (HbT) was evaluated under LOSO (see §4.3 Task Comparison). No LOSO row will be added to TABLE III. The 10-fold CV results reported here constitute the complete hemoglobin-type comparison; this is by design, not a gap.
