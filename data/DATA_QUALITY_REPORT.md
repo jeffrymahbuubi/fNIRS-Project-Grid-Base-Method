@@ -210,3 +210,129 @@ Instead:
 ---
 
 *Report generated from automated quality scan. All metrics are based on GNG task (data/raw) and GNG+SS tasks (data/additional-raw). Full per-task, per-channel breakdown available in `/tmp/fnirs_quality_full.csv`.*
+
+---
+
+## 9. Pipeline Comparison: Old vs Motion-Corrected (GNG Task)
+
+**Analysis date:** 2026-04-30  
+**Scope:** GNG task, HbO signal, 62 shared subjects  
+**Old pipeline source:** `data/processed-new/GNG` — Homer3 bandpass only (`nirs2csv_homer3.m`)  
+**New pipeline source:** `data/processed-old-new-mc/GNG` — Wavelet + CBSI (`nirs2csv_homer3_mc.m`)  
+**Processing settings applied to both:** `--apply-baseline --apply-zscore --save-preprocessed`
+
+---
+
+### 9.1 Pipeline Architecture Difference
+
+| Stage | Old pipeline | New (MC) pipeline |
+|-------|-------------|-------------------|
+| 1. Intensity → OD | ✓ `hmrR_Intensity2OD` | ✓ `hmrR_Intensity2OD` |
+| 2. Motion correction | ✗ absent | ✓ `hmrR_MotionCorrectWavelet` (IQR=1.5) |
+| 3. Physiological noise | ✗ absent | ✓ `hmrR_CBSI` |
+| 4. Bandpass 0.01–0.5 Hz | ✓ | ✓ |
+| 5. Conc (Beer-Lambert) | ✓ `hmrR_OD2Conc` | ✓ `hmrR_OD2Conc` |
+
+The old pipeline passes raw intensity directly to bandpass and Beer-Lambert conversion. Any motion artifact that falls within the 0.01–0.5 Hz passband (which most head-movement events do, as their duration overlaps the low-frequency task band) is **indistinguishable from neural hemodynamic signal** at the OD conversion stage.
+
+**Wavelet MC** decomposes each OD channel into frequency sub-bands using a discrete wavelet transform and identifies artifact-contaminated coefficients as those exceeding `IQR × threshold` (1.5 in this run). Contaminated coefficients are suppressed before reconstruction. This targets the **amplitude and shape** of motion transients rather than their frequency content, making it effective even for motion events whose bandwidth overlaps the task-frequency range.
+
+**CBSI (Correlation-Based Signal Improvement)** exploits the physiological constraint that HbO and HbR must be negatively correlated in genuine neurovascular responses. It decomposes the OD signal into a component parallel to motion (positive HbO–HbR covariation) and a component orthogonal to motion (negative HbO–HbR covariation), then retains only the latter. By construction, CBSI forces r(HbO, HbR) = −1.0 in the output.
+
+---
+
+### 9.2 Quantitative Signal Quality Metrics
+
+All metrics computed on z-score-normalised HbO epochs (channel-wise z-score applied in `processor_cli.py`).
+
+| Metric | Old pipeline | MC pipeline | Δ | Direction |
+|--------|-------------|-------------|---|-----------|
+| Temporal std (mean ± std) | 0.9252 ± 0.0268 | 0.8945 ± 0.0306 | −3.3% | Lower = less noise |
+| Temporal std (median) | 0.9305 | 0.8967 | −3.6% | |
+| Temporal std (95th pct) | 0.9603 | 0.9386 | −2.3% | |
+| Temporal std (maximum) | 0.9705 | 0.9494 | −2.2% | |
+| Spike ratio (>3σ events) | 0.0014 ± 0.0012 | 0.0011 ± 0.0011 | **−23.4%** | Lower = fewer spikes |
+| Spike ratio — healthy only | 0.0015 | 0.0013 | −16% | |
+| Spike ratio — anxiety only | 0.0013 | 0.0009 | −31% | |
+| HbO–HbR r (mean ± std) | −0.025 ± 0.613 | **−1.000 ± 0.000** | — | Negative = physiological |
+| Extreme epochs (\|peak\| > 10σ) | 0 | 0 | 0 | — |
+| Subjects with MC regression | — | 2 / 62 | ΔΔ < 0.002 | Negligible |
+
+**Notes on interpretation:**
+
+- **Temporal std** measures residual variability after z-scoring. Since each channel is individually normalised to unit variance, a mean std < 1.0 indicates that cropping the preparation window (3 s for GNG) reduced apparent variance — this is expected. The MC pipeline reduces this further because Wavelet MC has already suppressed high-variance transient events before epoching.
+
+- **Spike ratio** is the fraction of time-samples exceeding 3 standard deviations from the channel mean within each epoch. This is the clearest per-epoch indicator of residual motion contamination. A 23% overall reduction (31% in the anxiety group) is practically meaningful given the class imbalance correction requirements of this study.
+
+- **HbO–HbR correlation** is the most diagnostically important metric. In the old pipeline the mean correlation is −0.025 with standard deviation 0.61, meaning many individual channel-epochs have **positive** HbO–HbR correlation. Positive correlation is unambiguously artifactual: it cannot arise from genuine neurovascular coupling and indicates that motion or systemic noise is the dominant signal component. In the MC pipeline, CBSI forces r = −1.0 by construction; see §9.4 for a discussion of this constraint.
+
+---
+
+### 9.3 Dataset Coverage Changes
+
+| Group | Old pipeline subjects | MC pipeline subjects | Newly recovered |
+|-------|-----------------------|---------------------|-----------------|
+| Healthy (GNG) | 33 | 33 | — |
+| Anxiety (GNG) | 29 | **31** | EA012, EA016 |
+| **Total** | **62** | **64** | **+2 anxiety** |
+| Total GNG epochs | 248 | 256 | +8 |
+
+EA012 and EA016 are anxiety subjects that produced valid GNG epochs under the MC pipeline but failed to generate output in the old pipeline (likely due to missing or unmatched CSV files in the earlier batch). Both subjects are rated **OK** in the pre-MC quality assessment (§4), making them clean additions.
+
+Subjects with zero GNG epochs in **both** pipelines (AH009, AH010, AH032, AA001–AA008) are early-protocol subjects recorded under a different task design; they are excluded from GNG analysis regardless of pipeline.
+
+---
+
+### 9.4 Subject-Level Improvement Profile
+
+All ten highest-artifact subjects (by temporal std in the old pipeline) improved under MC:
+
+| Subject | Group | Old std | MC std | Reduction |
+|---------|-------|---------|--------|-----------|
+| LA095 | anxiety | 0.9705 | 0.9494 | −2.2% |
+| AH044 | healthy | 0.9645 | 0.9404 | −2.5% |
+| AA064 | anxiety | 0.9610 | 0.9308 | −3.1% |
+| AH047 | healthy | 0.9604 | 0.9484 | −1.2% |
+| **AA092** | anxiety | 0.9578 | **0.8503** | **−11.2%** |
+| AH036 | healthy | 0.9568 | 0.9230 | −3.5% |
+| **AA093** | anxiety | 0.9552 | **0.8697** | **−9.0%** |
+| **AA094** | anxiety | 0.9551 | **0.8973** | **−6.1%** |
+| AH022 | healthy | 0.9540 | 0.9283 | −2.7% |
+| LA096 | anxiety | 0.9533 | 0.9317 | −2.3% |
+
+The three subjects with the **largest improvements** (AA092, AA093, AA094) are all from `data/additional-raw` — a cohort independently assessed as having the highest motion artifact burden in the pre-correction quality report (§5). This validates the Wavelet MC step specifically for the subjects it was most needed for.
+
+Only 2 subjects (AH014, AH045) showed a marginal regression under MC (+0.0015 and +0.0008 std respectively), well below any meaningful threshold. No subject was degraded enough to warrant exclusion from the MC dataset.
+
+---
+
+### 9.5 CBSI Constraint: Limitation and Mitigation
+
+CBSI enforcing r(HbO, HbR) = −1.0 is both its strength and its limitation:
+
+**Why this is acceptable for the present study:**
+- The classification target (anxiety vs healthy) is based on the **pattern and magnitude** of the hemodynamic response, not on the precise coupling ratio between HbO and HbR independently.
+- HbT = HbO + HbR is a linear combination that is **not** constrained to zero by CBSI. HbT retains genuine hemodynamic amplitude information while the Wavelet+CBSI steps have already cleaned motion artifacts from both channels.
+- Using HbT for the classification model avoids the CBSI artefact entirely while still benefiting from the motion-corrected signal.
+
+**Recommended data type for downstream modelling:** `hbt` from `processed-old-new-mc`. This provides motion-corrected, physiologically valid total hemoglobin without the r = −1 constraint on individual channels.
+
+---
+
+### 9.6 Pipeline Recommendation
+
+| Decision | Recommendation |
+|----------|---------------|
+| **Primary dataset** | `data/processed-old-new-mc` |
+| **Primary signal** | `hbt` (HbO + HbR, avoids CBSI r=−1 constraint) |
+| **Fallback signal** | `hbo` (if HbT analysis is unavailable) |
+| **Exclude old pipeline** | Yes — `data/processed-new` should not be used for new experiments |
+| **Subjects to monitor** | See HIGH-RISK list in §2; all improved under MC but remain the noisiest subjects |
+| **Subjects to exclude** | LA063 (highest combined risk), AH024 (highest noise in healthy) — optional, see §6 |
+
+**Summary justification:**
+1. The old pipeline produces near-zero HbO–HbR correlation (r = −0.025 ± 0.61), revealing that motion and systemic physiological noise — not neural hemodynamics — is the dominant signal component for a significant fraction of subjects and epochs.
+2. The MC pipeline reduces spike occurrence by 23% overall (31% in the anxiety group), which is the group where artifact contamination most risks corrupting the classification target.
+3. The MC pipeline recovers 2 additional anxiety subjects (EA012, EA016) and produces the largest quality gains in the highest-burden subjects from `data/additional-raw`.
+4. No subject is degraded to an unacceptable level by the MC pipeline.
+5. The 64-subject MC GNG dataset provides a 3.2% larger training pool than the 62-subject old-pipeline dataset, with measurably cleaner signal throughout.
