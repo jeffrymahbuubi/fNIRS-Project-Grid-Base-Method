@@ -1,0 +1,17 @@
+batch_size: 8
+data_dir: data/processed/
+data_type: hbt
+epochs: 100
+k_folds: 5
+label_smoothing: 0.0
+num_workers: 4
+patience: 100
+resume: false
+save_dir: ./experiments/saved_models
+splits_json: null
+sqrt_class_weights: false
+task: VF
+use_amp: false
+use_class_weights: false
+use_kfold: false
+use_loso: true
