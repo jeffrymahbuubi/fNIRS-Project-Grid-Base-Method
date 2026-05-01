@@ -177,8 +177,8 @@ Sub-sections to cover (in order):
 
 #### 2.1 Participants & Dataset Characteristics
 - Table 1: Group demographics (HC/GAD n, age, sex, HAMA, STAI-S, STAI-T)
-- Age confound disclosure: Welch t=-6.13, p=3.3×10⁻⁶ — acknowledge here; expand in limitations
-- Sex balance: χ²=0.01, p=0.92
+- Age confound disclosure: t(46)=8.20, p=1.50×10⁻¹⁰ — acknowledge here; expand in limitations
+- Sex balance: χ²(1)=0.13, p=0.72
 - Ethics statement (IRB approval — confirm with advisor)
 
 #### 2.2 fNIRS Data Acquisition
@@ -280,7 +280,7 @@ Do NOT reference NB02 d-rankings in the Discussion or Results.
 ---
 
 ### Section 4: Results
-**Status: §4.1 ✅ (5-fold ablation complete) | §4.2 ✅ (Hb type, 10-fold complete) | §4.3 ✅ (task comparison, 10-fold + LOSO complete) | §4.4 ❌ BLOCKED (t-SNE, needs embed.py)**
+**Status: §4.1 ✅ (5-fold ablation complete) | §4.2 ✅ (Hb type, 10-fold complete) | §4.3 ✅ (task comparison, 10-fold + LOSO complete) | §4.4 DROPPED (t-SNE not included in paper — decision 2026-05-01)**
 **Placeholder structure:**
 
 #### 4.1 Ablation Study: Clip Size × Patch Size
@@ -349,29 +349,10 @@ GNG directly taxes the right ventrolateral prefrontal cortex (rVLPFC) and inferi
 **Pillar 3 — Clinical utility for screening:**
 GNG has the shortest trial duration (32 s) — less than 40% of 1backWM (85 s) — critical for elderly participants (HC avg 72.7 yrs). LOSO sensitivity = 95.3%: fewer than 1 in 20 GAD cases missed, the correct optimization for screening (false negatives carry direct clinical cost). GNG has decades of normative neuropsychological data, giving it established construct validity.
 
-#### 4.4 t-SNE Embedding Visualization (✅ COMPLETE — 2026-05-01)
-**Notebook:** `src/notebook/statistical-analysis/05_tsne_embeddings/05_tsne_task_comparison.ipynb`
-**Models:** Per-task HbT 5-fold (20260428). Figures saved to notebook directory.
-
-| Task | 64D Silhouette | 2D t-SNE Silhouette |
-|------|---------------|---------------------|
-| **1backWM** ★ | **+0.0624** | **+0.0519** |
-| GNG | +0.0396 | −0.0280 |
-| SS | +0.0045 | −0.0028 |
-| VF | −0.0076 | −0.0065 |
-
-**Key finding:** 1backWM produces best cluster separation; GNG ranks 2nd in 64D.
-**All silhouette values near zero** (range −0.03 to +0.06) — no task shows strong linear separability.
-
-**Paper framing (REQUIRED — from Agent 5 brainstorm):**
-*"Although 1-back working memory embeddings exhibit higher silhouette scores (s=+0.062 vs s=+0.040), this reflects linear cluster separability rather than discriminative utility. GNG embeddings yield substantially higher classification accuracy (88.4% vs 83.4%) despite lower cluster cohesion, suggesting the ViT captures non-linearly structured cognitive state boundaries — a pattern consistent with the complex spatiotemporal dynamics underlying prefrontal inhibitory control."*
-
-Keep in **main results** (not supplementary). Hiding it would raise reviewer suspicion. The GNG/1backWM dissociation is itself a finding: better linear separability (1backWM) does not predict better classification accuracy (GNG) — evidence of non-linear discriminative feature learning.
-
 ---
 
 ### Section 5: Discussion
-**Status: PARTIALLY READY**
+**Status: ✅ DRAFT COMPLETE — v1_discussion.md**
 **Word target: ~800–1000 words**
 
 Sub-sections:
@@ -381,25 +362,23 @@ Sub-sections:
    - **Consistency**: GNG κ CV=0.209 across 3 CV strategies (VF CV=0.393, nearly 2×); GNG holds rank 2+ in every regime; VF's 5→10-fold Δκ=+0.477 vs GNG Δ=+0.201 — VF's peak is data-dependent
    - **Neuropsychological specificity**: GNG stresses rVLPFC/IFG — the inhibitory circuitry directly implicated in GAD's worry-suppression deficit; 1backWM recruits dlPFC-dominant networks that are less specific to GAD pathology
    - **Clinical utility**: Shortest paradigm (32 s) for elderly participants; LOSO Sens=95.3% optimized for screening (false negatives costly)
-   - **t-SNE dissociation**: 1backWM shows better linear cluster separability but GNG shows better classification — attributed to non-linear feature learning by the ViT's spatiotemporal attention mechanism
 4. **Patch/clip size analysis** — tradeoff: larger clips capture more temporal context but higher compute
-5. **Comparison with prior art** — Wang 2025, Shao 2024, Ma 2020 literature table
+5. **Comparison with prior art** — Wang 2025 (96.5%), Shao 2024 (90.5%, TNSRE) [Ma 2020 removed — wrong target class]
 6. **Limitations**:
    - Age confound: HC (72.7±5.2 yrs) vs. GAD (49.5±14.3 yrs), t(46)=8.20, p<0.001 — hemodynamic aging effects on PFC cannot be fully excluded
    - Small GAD sample (n=16): limits FDR power, no severity correlation survives correction
    - **Cross-subject HC specificity (LOSO finding):** 13/32 HC (40.6%) systematically misclassified as GAD across all 4 tasks; Spec=59.4% at LOSO. Dual framing: (a) model limitation — fails for a distinct HC subgroup; (b) scientific observation — possible subclinical anxiety or atypical hemodynamics in aging HC participants. Motion-corrected preprocessing (Wavelet+CBSI) proposed as mitigation.
    - Spatial resolution bound: effective resolution bounded by 23 discrete channel positions; bilinear resize increases token count but no new measurement information
-   - No attention map visualization yet (pending)
    - Single prefrontal region — no full-head coverage
 
 ---
 
 ### Section 6: Conclusion
-**Status: READY (skeleton)**
+**Status: ✅ DRAFT COMPLETE — v1_conclusion.md**
 - Summarize: grid-based encoding approach, HbT justified, GNG best task
 - LOSO performance (fill with final numbers)
 - Clinical implication: objective, portable fNIRS system for GAD screening
-- Future work: age-matched cohort, attention visualization, multi-region coverage
+- Future work: age-matched cohort, multi-region fNIRS coverage beyond prefrontal cortex
 
 ---
 
@@ -423,7 +402,6 @@ Sub-sections:
 | `ViT_Architecture_3.tif` | Transformer block detail | Methods §2.6 |
 
 Statistical figures (from `src/notebook/statistical-analysis/`):
-- `02_brain_activation/`: fig_topo_activation.png, fig_topo_effect_size.png, fig_channel_task_heatmap.png, fig_gng_sig_channels.png, fig_task_grand_mean.png
 - `03_hb_type_comparison/`: fig_hb_type_grand_mean.png, fig_hb_type_cohen_d.png, fig_s7d6_hb_comparison.png, fig_hb_type_abs_d_bar.png
 - `04_severity_correlation/`: fig_stait_correlation_topo.png, fig_hama_correlation_topo.png, fig_severity_top_channels.png, fig_severity_score_dist.png, fig_s7d6_severity_scatter.png
 - `01_demographic/`: fig_age_comparison.png, fig_sex_distribution.png, fig_hama_gad.png, fig_stai_comparison.png, fig_education.png
@@ -582,9 +560,92 @@ Save to research/paper-materials/drafts/v1_methods_signal_processing.md
 #### Step 3: Write Methods §2.5 (Grid-Based Spatiotemporal Encoding)
 ```
 @scientific-writing Write Section 2.5 (Grid-Based Spatiotemporal Encoding)
-as described in PAPER_SPEC_PLAN.md. Include: 1D→2D motivation, 5×7 grid
-construction, 3D video tensor formation, channel mapping rationale.
-Use the motivation paragraph from the spec. IEEE TNSRE style, ~400 words.
+for an IEEE TNSRE paper on grid-based fNIRS GAD classification.
+
+Content to cover (in order, ~500 words):
+
+1. **Motivation paragraph (topology-preserving design):**
+   Unlike conventional approaches that flatten fNIRS channels into a fixed-length feature
+   vector, the proposed encoding preserves the anatomical spatial arrangement of optodes
+   across the prefrontal cortex. fNIRS optodes occupy fixed, known positions on the scalp;
+   a 2D grid respecting these positions encodes neuroanatomically meaningful proximity,
+   enabling the model to learn spatially coherent haemodynamic patterns rather than treating
+   channels as an unordered bag of signals.
+
+2. **Step 1 — Epoch matrix H^(k):**
+   Each trial epoch is represented as a haemodynamic-concentration matrix:
+
+     H^(k) = [h_t]_{t ∈ τ_k} ∈ ℝ^{C × L}
+
+   where C = 23 is the number of fNIRS channels, L is the number of time samples in epoch k,
+   and the column vector h_t = [ΔHbT_{1,t}, …, ΔHbT_{C,t}]^T contains the HbT concentration
+   change at time t for every channel. (Signal: HbT only, the primary selected measure.)
+
+3. **Step 2 — Channel-wise z-score normalisation:**
+   Each epoch is normalised channel-wise by subtracting the per-channel mean μ_k and dividing
+   by the per-channel standard deviation σ_k:
+
+     ĥ_t^(k) = (h_t^(k) − μ_k) / σ_k
+
+   This yields zero-mean, unit-variance signals across all 23 channels, placing channels on a
+   common scale regardless of inter-subject haemodynamic amplitude differences.
+
+4. **Step 3 — Mapping to 5×7 sparse grid:**
+   Each z-scored sample vector ĥ_t^(k) ∈ ℝ^{23} is placed into a 5×7 spatial grid via a fixed
+   bijective mapping M that assigns channel c to grid coordinates (i_c, j_c):
+
+     M : {1, …, 23} → {1, …, 5} × {1, …, 7},  where M(c) = (i_c, j_c)
+
+   The resulting sparse spatial frame at time t is:
+
+     F_t(i, j) = ĥ_{c,t}   if (i, j) = M(c) for some c
+               = 0           otherwise
+
+   Of the 35 grid cells, 23 are occupied by channels and the remaining 12 are initialised to
+   zero (Fig. 7). Reference figure: Figure 7.tif.
+
+5. **Step 4 — Gaussian RBF interpolation to dense frame F̂_t:**
+   The 12 zero-filled cells are recovered using Gaussian radial-basis function interpolation.
+   For any unoccupied grid point (x, y), the interpolated value is:
+
+     F̂_t(x, y) = Σ_{m=1}^{23} w_m exp[−ε² ‖(x, y) − (x_m, y_m)‖²]
+
+   The weights w_m are determined by solving the linear system Φ w = z, where
+   Φ_{mn} = exp[−ε² ‖(x_m, y_m) − (x_n, y_n)‖²] and z_m = F_t(x_m, y_m).
+   This produces a fully populated dense frame F̂_t ∈ ℝ^{5×7} that preserves the topographic
+   structure of the original optode array (Fig. 8 and 9). Reference figures: Fiigure 8.tif,
+   Figure 9.tif.
+
+6. **Step 5 — Stacking to 3D clip S^(k):**
+   The sequence of dense frames {F̂_t}_{t ∈ T_k} is stacked along the temporal axis to form
+   a spatiotemporal clip tensor:
+
+     S^(k) = [F̂_t]_{t ∈ T_k} ∈ ℝ^{L × 5 × 7}
+
+   This directly mirrors the video clip representation used by Video Vision Transformers
+   [REF-ViViT]. Reference figure: Figure 10.tif.
+
+7. **Step 6 — Uniform temporal subsampling to S* ∈ ℝ^{T* × 5 × 7}:**
+   Because trials have variable length L, a uniform temporal subsampling operation selects
+   T* uniformly spaced frame indices:
+
+     idx_i = ⌊ (i − 1)(L − 1) / (T* − 1) ⌋,   i = 1, …, T*
+
+   yielding S* ∈ ℝ^{T* × 5 × 7}. This preserves the full chronological order of the epoch
+   while standardising the temporal dimension across subjects and tasks.
+
+8. **Step 7 — Spatial upsampling and RGB replication:**
+   Because the native 5×7 spatial resolution is too coarse for patch-based tokenisation,
+   S* is upsampled to (T*, H', W') via bilinear interpolation where H' = W' ∈ {32, 64, 128}
+   depending on the ablation configuration (§IV-A). Upsampling preserves the relative spatial
+   topology but introduces no new physiological information; spatial content remains bounded
+   by the 23 physical optode positions. Finally, the single-channel map is replicated across
+   three input channels, yielding the model input tensor of shape (3, T*, H', W'), compatible
+   with the RGB tubelet-embedding format of the ViT backbone [REF-ViViT].
+
+Equation numbering: assign sequential numbers continuing from Eq. (2) in §2.4.
+Use \begin{equation}…\end{equation} in LaTeX; reference equations inline as [Eq. (X)].
+IEEE TNSRE style, ~500 words.
 Save to research/paper-materials/drafts/v1_methods_grid_encoding.md
 ```
 
@@ -814,7 +875,7 @@ Save to research/paper-materials/drafts/v1_results_task_comparison.md
 #### Step 4c: Write Discussion §5
 ```
 @scientific-writing Write Section 5 (Discussion) for an IEEE TNSRE paper
-on grid-based fNIRS GAD classification. Target ~900 words.
+on grid-based fNIRS GAD classification. Target ~800 words.
 
 Write the following sub-sections IN ORDER:
 
@@ -845,15 +906,6 @@ Write the following sub-sections IN ORDER:
      for clinical screening); established normative data for GNG in neuropsychology.
    - Frame GNG as selected based on THREE convergent lines of evidence — not just "it scored highest."
 
-4. t-SNE dissociation finding (~100 words):
-   - 1backWM shows higher silhouette (+0.062 vs GNG +0.040 in 64D)
-   - GNG achieves higher classification accuracy (88.4% vs 83.4%)
-   - Use exact framing: *"GNG embeddings yield higher classification accuracy despite lower
-     linear cluster cohesion, suggesting the ViT captures non-linearly structured cognitive
-     state boundaries — consistent with the complex spatiotemporal dynamics of prefrontal
-     inhibitory control."*
-   - Present this dissociation as a genuine finding, not a weakness
-
 4. Configuration C and temporal context (~150 words):
    - Config C (T=256) outperforms A and B on all metrics in ablation (§4.1)
    - Captures full HRF (~25.6 s) vs Config A only rise phase (~6.4 s)
@@ -861,7 +913,8 @@ Write the following sub-sections IN ORDER:
    - Compute-accuracy tradeoff noted: Config C uses larger spatial dimensions (128×128)
 
 5. Comparison with prior art (~100 words):
-   - Compare against Wang 2025, Shao 2024, Ma 2020 (values from literature table)
+   - Compare against Wang 2025 (96.5% HC vs Anxiety), Shao 2024 (90.5% depression recognition, TNSRE)
+   - Ma 2020 REMOVED — paper classified BD vs MDD, not HC vs MDD
    - Advantage: end-to-end spatiotemporal learning, no hand-crafted features,
      topology-preserving encoding
 
@@ -881,7 +934,6 @@ Write the following sub-sections IN ORDER:
    - Spatial resolution bound: effective spatial resolution is bounded by 23 discrete fNIRS
      channel positions; bilinear resize to H×W increases ViT token count but introduces
      no additional measurement information beyond the original optode arrangement
-   - No attention map visualisation yet (pending ViT forward-hook implementation)
    - Single prefrontal region — no full-head coverage; other regions may be relevant
 
 IMPORTANT: Do NOT fill in final classification performance numbers — use [XX.X%]
@@ -907,8 +959,8 @@ Include in order:
    as independent generalization confirmation.
 6. Clinical implication: portable, objective fNIRS-based screening tool for GAD;
    complements self-report instruments (GAD-7, STAI)
-7. Future work (2–3 items): age-matched cohort; ViT attention map visualisation;
-   multi-region fNIRS coverage beyond prefrontal cortex
+7. Future work (1–2 items): age-matched cohort to disentangle the age confound;
+   multi-region fNIRS coverage beyond the prefrontal cortex
 
 Do NOT invent final numbers. Use [XX.X%] for any result still pending.
 IEEE TNSRE style.
@@ -951,8 +1003,6 @@ statistical rigor, figure quality, and IEEE TNSRE scope alignment.
 | Section 4.3 LOSO GNG numbers | ✅ COMPLETE (2026-04-30) | Acc=71.4%, Sens=95.3%, κ=0.459 |
 | Section 4.2 Hb type results | ✅ UNBLOCKED — 10-fold complete; verified data in §4.2 above | Use Step 4e prompt to write |
 | Section 4.3 Task comparison table | ✅ UNBLOCKED — 10-fold complete; verified data in §4.3 above | Use Step 4f prompt to write |
-| Section 4.4 t-SNE | Final model + embed.py | After training |
-| Discussion §3 GNG mechanism | Attention maps | After implementing ViT hook |
 | Final conclusion numbers | All results | Last step |
 
 ---
@@ -961,8 +1011,6 @@ statistical rigor, figure quality, and IEEE TNSRE scope alignment.
 
 - [ ] Confirm final 5×7 grid cell positions for all 23 channels
 - [ ] Finalize clip size and patch size from ablation
-- [ ] Implement ViT attention map visualization (forward hook on final attention block)
-- [ ] Run t-SNE on CLS token embeddings per task (script in `src/core/embed.py`)
 - [ ] Confirm IRB approval details for ethics statement
 - [ ] Confirm dataset is new vs. old codebase (same 23-channel prefrontal setup?)
 
