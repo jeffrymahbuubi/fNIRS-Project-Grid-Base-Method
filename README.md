@@ -6,6 +6,40 @@ The core contribution is a novel 1D→2D→3D encoding pipeline that maps 23 fNI
 
 ---
 
+## Project Structure
+
+```
+fNIRS-Grid-Base-Method/
+├── src/core/                     # ViT model, training loop, data pipeline
+│   ├── main.py                   #   Entry point — CLI argument parsing
+│   ├── models.py                 #   3D ViT architecture
+│   ├── datasets.py               #   fNIRS grid dataset loader
+│   ├── training.py               #   k-fold / LOSO training logic
+│   ├── processor.py              #   1D→2D→3D grid encoding
+│   ├── embed.py                  #   Patch embedding
+│   └── config.py                 #   Hyperparameter dataclass
+├── data/
+│   ├── processor_cli.py          #   Homer3 CSV → .npy conversion
+│   ├── generate_splits.py        #   Deterministic k-fold split generator
+│   └── splits/kfold_splits.json  #   Committed split assignments
+├── experiments/
+│   ├── vit_gad_fnirs_20260428/   #   Final experiment outputs (2026-04-28)
+│   │   ├── 5fold/                #     12 runs × 5 folds each
+│   │   ├── 10fold/               #     12 runs × 10 folds each
+│   │   └── loso/                 #      4 runs × 48 subjects each
+│   └── experiment_metrics.xlsx   #   Precomputed metrics summary (all strategies)
+├── scripts/
+│   └── extract_metrics.py        #   Metrics extractor — CSV / XLSX output
+├── tests/
+├── config/
+│   └── paper_hyperparams.yaml
+└── requirements.txt
+```
+
+> `data/raw/`, `data/processed/`, and model weights (`*.pt`) are excluded from version control.
+
+---
+
 ## Environment Setup
 
 ### 1. Install `uv`
@@ -110,6 +144,41 @@ Results are saved to `./experiments/saved_models/<experiment_name>/`. Use `--sav
 
 ---
 
+## Extracting Metrics from Results
+
+`scripts/extract_metrics.py` reads all `.pkl` files under an experiment root and computes Acc, Sens, Spec, Prec, NPV, F1, BA, Cohen's κ, and MCC — reported as Mean±SD and Overall (from the pooled confusion matrix).
+
+### Default usage
+
+```bash
+# CSV output (default) — one summary + one detail file per CV strategy
+python scripts/extract_metrics.py
+
+# XLSX output — one workbook with one sheet per CV strategy
+python scripts/extract_metrics.py --xlsx --output experiments/my_report
+```
+
+### Custom target directory
+
+```bash
+python scripts/extract_metrics.py /path/to/experiment/root --xlsx
+```
+
+The target directory must contain `5fold/`, `10fold/`, and/or `loso/` subdirectories (any subset works).
+
+**Output files (CSV mode):**
+
+| File | Contents |
+|------|----------|
+| `*_5fold_summary.csv` | Mean±SD and Overall metrics per run |
+| `*_5fold_detail.csv` | Numeric Mean, SD, and 95% CI per run |
+| `*_10fold_summary.csv` | Same for 10-fold |
+| `*_loso_summary.csv` | Same for LOSO |
+
+A precomputed `experiments/experiment_metrics.xlsx` is included in the repository.
+
+---
+
 ## Experiment Results (2026-04-28)
 
 **Model:** ViT (Vision Transformer) | **Epochs:** 100 | **Batch size:** 8 | **Patience:** 100  
@@ -117,7 +186,7 @@ Results are saved to `./experiments/saved_models/<experiment_name>/`. Use `--sav
 
 All metrics reported as **Mean ± SD** across folds. Positive class = Anxiety/Cognitive Load (label 1).
 
-Full per-fold details: [`research/experiments/20260428/experiment_results.md`](research/experiments/20260428/experiment_results.md)
+Full per-fold details: [`experiments/vit_gad_fnirs_20260428/experiment_results.md`](experiments/vit_gad_fnirs_20260428/experiment_results.md)
 
 ### Primary Metrics — All Completed Experiments
 
@@ -184,21 +253,28 @@ Full per-fold details: [`research/experiments/20260428/experiment_results.md`](r
 
 10-fold consistently outperforms 5-fold; largest gains: VF (+21.8% acc) and SS (+13.0% acc).
 
-### Leave-One-Subject-Out (LOSO) — Pending
+### Leave-One-Subject-Out (LOSO) — HbT Only
 
-> **Results will be updated here once LOSO experiments are complete.**
+Signal: HbT | 48 subjects | 4 test samples per subject (2 sessions × 2 segments)
 
-| Task | Signal | Acc (Mean±SD) | Sens (Mean±SD) | Spec (Mean±SD) | F1 (Mean±SD) | κ (Mean±SD) | MCC (Mean±SD) | Overall Acc | Overall F1 |
-|------|--------|--------------|----------------|----------------|-------------|-------------|--------------|------------|------------|
-| GNG | HbO | — | — | — | — | — | — | — | — |
-| GNG | HbR | — | — | — | — | — | — | — | — |
-| GNG | HbT | — | — | — | — | — | — | — | — |
-| VF | HbO | — | — | — | — | — | — | — | — |
-| VF | HbR | — | — | — | — | — | — | — | — |
-| VF | HbT | — | — | — | — | — | — | — | — |
-| SS | HbO | — | — | — | — | — | — | — | — |
-| SS | HbR | — | — | — | — | — | — | — | — |
-| SS | HbT | — | — | — | — | — | — | — | — |
-| 1backWM | HbO | — | — | — | — | — | — | — | — |
-| 1backWM | HbR | — | — | — | — | — | — | — | — |
-| 1backWM | HbT | — | — | — | — | — | — | — | — |
+> Per-subject Mean±SD is not reported for LOSO — each subject's test set contains one class only (GAD or HC), making per-subject Sens/Spec/κ/MCC undefined. All metrics are derived from the pooled confusion matrix across all 48 held-out subjects.
+
+| Task | Signal | Overall Acc | Sens | Spec | Prec | F1 | NPV | κ | MCC |
+|------|--------|------------|------|------|------|----|-----|---|-----|
+| **GNG** | HbT | **0.714** | 0.953 | 0.594 | 0.540 | **0.689** | 0.962 | **0.459** | **0.524** |
+| **VF** | HbT | **0.714** | 0.953 | 0.594 | 0.540 | **0.689** | 0.962 | **0.459** | **0.524** |
+| 1backWM | HbT | 0.703 | 0.922 | 0.594 | 0.532 | 0.674 | 0.938 | 0.436 | 0.492 |
+| SS | HbT | 0.698 | 0.922 | 0.586 | 0.527 | 0.671 | 0.938 | 0.428 | 0.486 |
+
+> High Sensitivity (92–95%) and lower Specificity (59%) across all tasks. 13/32 HC subjects (40.6%) are consistently misclassified as GAD across all four tasks — the primary bottleneck for cross-subject generalization.
+
+#### Cross-Strategy Comparison — HbT (Overall Acc and κ)
+
+| Task | 5-fold Acc | 10-fold Acc | LOSO Acc | Δ (10→LOSO) | 5-fold κ | 10-fold κ | LOSO κ |
+|------|-----------|------------|---------|-------------|---------|----------|--------|
+| GNG | 0.786 | 0.880 | **0.714** | −0.166 | 0.543 | 0.740 | 0.459 |
+| VF | 0.667 | 0.885 | **0.714** | −0.171 | 0.256 | 0.744 | 0.459 |
+| 1backWM | 0.818 | 0.828 | 0.703 | −0.125 | 0.578 | 0.626 | 0.436 |
+| SS | 0.651 | 0.781 | 0.698 | −0.083 | 0.269 | 0.563 | 0.428 |
+
+Full per-subject breakdown and analysis: [`experiments/vit_gad_fnirs_20260428/experiment_results.md`](experiments/vit_gad_fnirs_20260428/experiment_results.md)
