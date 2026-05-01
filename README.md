@@ -1,8 +1,8 @@
 # fNIRS Grid-Based Method for GAD Classification
 
-This repository contains the implementation for **"Grid-Based Spatiotemporal Encoding of fNIRS Signals for Generalized Anxiety Disorder Classification Using a 3D Vision Transformer"** (target: IEEE TNSRE).
+This repository contains the implementation for **"Grid-Based Spatiotemporal Encoding of fNIRS Signals for Generalized Anxiety Disorder Classification Using a 3D Vision Transformer"**
 
-The core contribution is a novel 1D→2D→3D encoding pipeline that maps 23 fNIRS channels to a spatial grid, constructs video-like tensors, and applies a 3D Vision Transformer (ViT) for binary GAD classification (anxiety vs. healthy control). Four cognitive tasks are evaluated — Go/No-Go (GNG), 1-Back Working Memory (1backWM), Verbal Fluency (VF), and Serial Subtraction (SS) — across three hemoglobin signal types (HbO, HbR, HbT), with performance validated using 5-fold, 10-fold, and leave-one-subject-out (LOSO) cross-validation.
+The core contribution is a 1D→2D→3D encoding pipeline that maps 23 fNIRS channels to a spatial grid, constructs video-like tensors, and applies a 3D Vision Transformer (ViT) for binary GAD classification (anxiety vs. healthy control). Four cognitive tasks are evaluated — Go/No-Go (GNG), 1-Back Working Memory (1backWM), Verbal Fluency (VF), and Serial Subtraction (SS) — across three hemoglobin signal types (HbO, HbR, HbT), with performance validated using 5-fold, 10-fold, and leave-one-subject-out (LOSO) cross-validation.
 
 ---
 
@@ -181,7 +181,7 @@ A precomputed `experiments/experiment_metrics.xlsx` is included in the repositor
 
 ## Experiment Results (2026-04-28)
 
-**Model:** ViT (Vision Transformer) | **Epochs:** 100 | **Batch size:** 8 | **Patience:** 100  
+**Model:** ViT (Vision Transformer) | **Epochs:** 100 | **Batch size:** 8 | **Patience:** 100
 **Subjects:** 48 (32 anxiety / 16 control) | **Signals:** HbO, HbR, HbT | **CV:** 5-Fold, 10-Fold, LOSO
 
 All metrics reported as **Mean ± SD** across folds. Positive class = Anxiety/Cognitive Load (label 1).
