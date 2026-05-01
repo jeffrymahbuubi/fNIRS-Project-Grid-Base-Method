@@ -107,3 +107,6 @@ research/experiments
 
 # ─── Images ──────────────────────────────────────────────────────────────────
 img/
+
+# ─── Experiments — model weights (large binaries, not for VCS) ───────────────
+experiments/**/*.pt
