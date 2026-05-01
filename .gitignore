@@ -110,3 +110,6 @@ img/
 
 # ─── Experiments — model weights (large binaries, not for VCS) ───────────────
 experiments/**/*.pt
+
+# ─── Local config (machine-specific / contains local paths) ─────────────────
+config/
