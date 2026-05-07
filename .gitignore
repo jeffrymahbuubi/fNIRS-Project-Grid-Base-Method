@@ -113,3 +113,11 @@ experiments/**/*.pt
 
 # ─── Local config (machine-specific / contains local paths) ─────────────────
 config/
+
+# ─── Claude-Flow — entire folder excluded (tool-managed, not project code) ───
+.claude-flow/
+
+# ─── Jupyter session state & checkpoints ─────────────────────────────────────
+.jupyter/
+*.jupyter_ystore.db
+.ipynb_checkpoints/
